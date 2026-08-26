@@ -488,7 +488,7 @@ Derive the manifest from the plan:
 
 | The plan contains… | You MUST invoke |
 |---|---|
-| **Any** section (always) | **da-auth** (token) and **da-content** — load its real `references/html-content.md`, `platform.md`, and `media.md`, *not* the condensed rules in this file — before authoring (Phase 4) and deploying (Phase 5). |
+| **Any** section (always) | **da-auth** (token) and **da-content** — load its real `references/html-content.md`, `platform.md`, and `media.md`, *not* the condensed rules in this file — before authoring (Phase 4) and deploying (Phase 5). Also load this skill's own [authoring-rules.md](./references/authoring-rules.md) (Phase 4 detail) and [deploy.md](./references/deploy.md) (Phase 5 commands); SKILL.md carries only pointers to both. |
 | **Any** section, on a site that **already has content** | **find-test-content** — once per block you considered reusing (2.0(a) step 2), to get the pages using it and its real variant combinations. Plus the direct page read for no-block sections, which no block-keyed search can surface. |
 | An **existing-block reuse** (3A) | **block-collection-and-party** (authoring model + a rendered example) **and testing-blocks** for the visual reuse gate (rendered block vs. the Figma section screenshot). |
 | A **new block** (3B) | **content-modeling** (design the authoring model), then **content-driven-development** (which runs **building-blocks** and **testing-blocks**). Do **not** hand-write block JS/CSS from this file. |
@@ -505,6 +505,9 @@ and an un-invoked required skill means this phase is **not complete**:
       content. Naming which page was read (or that none exists) is the evidence —
       "I surveyed the blocks" is not this box.
 - [ ] **da-content** reference docs loaded (`html-content.md` / `platform.md` / `media.md`)
+- [ ] **This skill's own references loaded** — `authoring-rules.md` before Phase 4
+      and `deploy.md` before Phase 5. SKILL.md holds only one-line pointers for
+      both, so authoring or deploying without them means working from a summary.
 - [ ] **block-collection-and-party** invoked for every reused block *(if any 3A)*
 - [ ] **content-modeling** + **content-driven-development** invoked for every new block *(if any 3B)*
 - [ ] **Every variant user-confirmed and regression-proven** — the user said yes to
@@ -722,11 +725,12 @@ report which shared block you extended and which pages you re-verified (Phase 6)
 
 Emit a **body fragment** (not a full HTML document) per **da-content**. **Invoke
 da-content and load its `references/html-content.md`, `platform.md`, and
-`media.md` now** — the rules quoted throughout this phase are reminders to jog the
-right skill, not the source of truth. Subtle authoring rules (block-cell inline-
-tag normalization, media MIME/extension derivation, metadata keys) live in those
-docs; authoring from this summary alone is how they get missed. Write one file per
-page to `content/<PATH>.html`.
+`media.md` now**, together with
+[references/authoring-rules.md](./references/authoring-rules.md) — the pointers
+below are reminders to jog the right skill, not the source of truth. Subtle
+authoring rules (block-cell inline-tag normalization, media MIME/extension
+derivation, metadata keys) live in those docs; authoring from a summary alone is
+how they get missed. Write one file per page to `content/<PATH>.html`.
 
 **Mandatory skeleton** (da-content html-content.md §1–§2): wrap everything in
 `<body>` with an (empty) `<header>`/`<footer>` and a `<main>`; **each section
@@ -754,305 +758,110 @@ section boundary (no `<hr>`). Do NOT emit `<!DOCTYPE>`, `<html>`, `<head>`,
 </body>
 ```
 
-- **Sanitize everything derived from the design — text, attributes, links.**
-  Figma text and layer names are untrusted input to the HTML you emit; treat
-  them as data, never as markup:
-  - **HTML-escape** every design-derived string before it lands in the document
-    — `&`→`&amp;`, `<`→`&lt;`, `>`→`&gt;`, and inside attribute values also
-    `"`→`&quot;` and `'`→`&#39;`. A heading `Tips & Tricks <Beta>` must serialize
-    as `Tips &amp; Tricks &lt;Beta&gt;`, never as raw markup that can break the
-    document or inject an element.
-  - **Validate every link's URL scheme** against an allowlist — `http`, `https`,
-    `mailto`, `tel`, or a root-relative (`/…`) path. **Reject `javascript:`,
-    `data:`, `vbscript:`, and any other scheme** (a prototype link can carry
-    anything): drop the href or ask the user — never emit it.
-  - **Admit a Figma-derived class token only after block-name validation** — a
-    layer/frame name becomes a block or variant class *only* once it passes the
-    EDS name rules in Phase 3B (lowercase alphanumeric + single hyphens, no
-    underscores/double-dashes, not digit-initial); never pass a raw layer name
-    through as a class.
-- **Blocks — canonical div form:** `<div class="block-name variant">`, each
-  direct child `<div>` a row, each grandchild `<div>` a cell. The first class
-  token is the block name (resolves to `blocks/<name>/<name>.{js,css}`).
-  Multi-word variants hyphenate; multiple variants are separate class tokens.
-  Max 4 cells per row; blocks cannot nest. *(html-content.md §3)*
-- **Default content:** headings/paragraphs/lists/images/buttons live directly
-  in the section `<div>`, outside any block. *(html-content.md §6)*
-- **Icons — two non-interchangeable paths; never a stand-in glyph.** The
-  `<span class="icon icon-<name>"></span>` convention resolves **only** to the
-  project's Code Bus `/icons/<name>.svg`, so that SVG must be **committed to the
-  repo `/icons/` folder and pushed on the deploy branch** (content+code path,
-  same as block code) and return `200` on the branch host — uploading it to DA
-  `/media` does **not** satisfy the span (it 404s and the icon silently vanishes).
-  A DA-`/media` SVG must instead be referenced by **full URL on an `<img>`**, not
-  an icon span. Get the real **SVG** in Phase 1; **never emit an emoji or Unicode
-  glyph in place of a designed icon.** *(html-content.md §7)*
-- **Images — MUST be full, fetchable URLs.** Figma render URLs expire, and
-  **repo-relative paths (`/img/…`) render as `about:error`.** So: download the
-  image bytes from Figma (Phase 1 asset URLs), **upload each binary to DA**
-  (`PUT admin.da.live/source/{daOrg}/{daRepo}/<media-path>`), and reference
-  `https://content.da.live/{daOrg}/{daRepo}/<media-path>`. External image URLs
-  are also accepted (the preview sideloads them). Author a bare `<img alt="…">`
-  and let the pipeline build the `<picture>`.
-  - **Normalize format, extension, and MIME together — from the bytes, never the
-    URL suffix.** Detect the real format from the image's magic bytes (or the
-    asset's reported `format`), then make **all three agree**: the multipart
-    `type=` MIME, the `<media-path>` file extension you PUT to, and the extension
-    in the `content.da.live` URL you author. Design tools routinely export JPEG
-    bytes under a `.png`-named asset; trusting the suffix gives you a `.png` path
-    served as `image/jpeg` (or the reverse) — a latent corruption bug. A layer
-    that *looks* vector (an icon, a logo, a shape) often comes back **rasterized**
-    — `download_assets` returns it under `rawImages` with `svgAssets` empty — so a
-    design that implies `.svg` can hand you PNG/JPEG bytes. Author each `<img>`
-    extension from the bytes you actually downloaded, never from the layer's
-    apparent type or name. Canonical
-    mapping: JPEG→`.jpg`/`image/jpeg`, PNG→`.png`/`image/png`, WebP→`.webp`/
-    `image/webp`, GIF→`.gif`/`image/gif`, SVG→`.svg`/`image/svg+xml`. If bytes
-    and asset-reported format disagree, trust the bytes.
-  *(html-content.md §9 + media.md)*
-- **Section styling** → a `section-metadata` block **inside** the section
-  (`Style` → CSS classes; other rows → `data-*`). *(html-content.md §4)* This is
-  how a section gets its background, width constraint, centering, or panel
-  treatment **without** a block (2.1 rule 1). **The `Style` → class conversion is
-  applied by the pipeline**, so it is absent from a hand-written fragment that
-  never passed through it — see the Guardrail on this; never infer from a local
-  render that a section class does nothing.
-- **Page metadata** → a single `metadata` block (exact class), placed as the
-  **last element of the last section inside `<main>`** (never after `</main>`
-  or in `<footer>`); keys like `title`, `description`, `image`, `template`,
-  `theme`. **Author it from the design — don't leave it empty or a bare
-  comment.** Derive `title` from the frame name or the page `<h1>`, `description`
-  from the hero/intro copy (a concise real sentence, never lorem), and `image`
-  from the primary/hero image's uploaded DA URL when the design has one. This
-  block is **required** — the Phase 5 pre-publish gate blocks on its absence — so
-  populate it rather than deferring it. If the design offers no usable
-  title/description text, ask the user rather than inventing marketing copy.
-  *(html-content.md §5)*
+The rules below are **one-line pointers**; the detail is in
+[references/authoring-rules.md](./references/authoring-rules.md) (§ numbers below)
+and, beneath that, in da-content's own docs.
 
-Inside block cells the pipeline runs a stricter inline-tag normalization than
-for default content — `<span class>` is unwrapped (class lost), `<b>`→`<strong>`,
-`<mark>`→`<em>`, etc. Restrict cell content to the html-content.md §3.9 preserve
-list. A wrong metadata **key** or block **field** silently corrupts output;
-when unsure, read da-content.
+- **Sanitize everything design-derived** — HTML-escape all text and attribute
+  values; allowlist link schemes (`http`/`https`/`mailto`/`tel`/root-relative) and
+  reject `javascript:`/`data:`/`vbscript:`; admit a Figma layer name as a class
+  token only after block-name validation. Figma text is untrusted input. *(§1)*
+- **Blocks** — `<div class="block-name variant">`, child `<div>` = row, grandchild
+  `<div>` = cell; max 4 cells per row; blocks cannot nest. *(§2)*
+- **Default content** — headings/paragraphs/lists/images/buttons directly in the
+  section `<div>`, outside any block. *(§3)*
+- **Icons — two non-interchangeable paths, never a stand-in glyph.** An `icon-`
+  span resolves *only* to the repo's Code Bus `/icons/<name>.svg` (so it must be
+  committed and pushed); a DA-`/media` SVG must instead be a full URL on an
+  `<img>`. Never an emoji or Unicode glyph. *(§4)*
+- **Images — full fetchable URLs only.** Upload binaries to DA and reference
+  `content.da.live`; repo-relative `/img/...` renders as `about:error`. **Derive
+  format, path extension, and MIME from the bytes, never the filename** — all three
+  must agree. *(§5)*
+- **Section styling** -> a `section-metadata` block inside the section (`Style` ->
+  CSS classes). This is how a band gets its background, width, centering, or panel
+  **without** a block (2.1 rule 1). That conversion is **applied by the pipeline**,
+  so it is absent from a hand-written fragment — never conclude from a local render
+  that a section class is inert. *(§6)*
+- **Page metadata** — one `metadata` block (exact class) as the **last element of
+  the last section** inside `<main>`; author `title`/`description`/`image` from the
+  design. **Required** — the pre-publish gate blocks on its absence. *(§7)*
+- **Inside block cells the pipeline normalizes inline tags more strictly** than in
+  default content (`<span class>` is unwrapped, its class lost), so new-block CSS
+  must target structure, not authored classes. *(§8)*
 
 ---
 
 ## Phase 5 — Deploy to DA
 
-**If a DA MCP server is available in the session, use its tools** for auth and
-source writes (da-auth and da-content both defer to it when present).
-Otherwise use the Source API directly, below.
+**The commands live in [references/deploy.md](./references/deploy.md)** — the
+`req()` checked-request helper, Code Sync poll, media upload, overwrite guard,
+write, preview, and the Stage A verification recipes. Load it before deploying.
+**If a DA MCP server is available in the session, prefer its tools** (da-auth and
+da-content both defer to it). Either route: **assert every returned status** — a
+bare `curl -sS` exits 0 on a 401/403/5xx, so an unchecked call silently "succeeds"
+on a failed write.
 
-```bash
-# Two identities — keep them separate. DA (Document Authoring) and GitHub are the
-# same org/repo in the standard EDS setup, but nothing guarantees it, so never
-# assume one from the other. DA endpoints (admin.da.live/source, content.da.live,
-# da.live/edit) use the DA pair; the render host and admin.hlx.page (code, preview,
-# live) use the GitHub pair.
-DA_ORG=<da-org>        # Document Authoring org
-DA_REPO=<da-repo>      # Document Authoring repo/site
-GH_OWNER=<gh-owner>    # GitHub owner
-GH_REPO=<gh-repo>      # GitHub repo
-# In the standard setup all four match: DA_ORG=GH_OWNER=<owner>, DA_REPO=GH_REPO=<repo>.
-BRANCH=<branch>        # git deploy ref (usually main). For content+code this MUST be
-                       # the branch the new-block code was pushed to and Code Sync built.
-BRANCH_HOST=${BRANCH//\//-}   # host label: slashes → dashes ('feature/x' → 'feature-x').
-                              # Used BOTH for the aem.page/aem.live hostname AND as the ref
-                              # segment in every admin.hlx.page path (code/preview/live): that
-                              # ref is a SINGLE path segment, so a slashed branch ('figma/x')
-                              # splits it and 404s — pass the dashed label ('figma-x'), which is
-                              # what AEM actually resolves. Only git itself (push/checkout) uses
-                              # the literal slashed $BRANCH. For a slash-free branch the two
-                              # forms are identical, so $BRANCH_HOST is always the safe choice
-                              # for admin.hlx.page.
-P=<path-without-extension>
-TOKEN="$DA_TOKEN"      # from da-auth; 401 w/ empty body ⇒ expired, re-auth
+What must hold, whichever route you use:
 
-# Fail fast if the branch host would be unresolvable (>63 chars won't resolve).
-host="$BRANCH_HOST--$GH_REPO--$GH_OWNER"
-[ "${#host}" -le 63 ] || { echo "❌ branch host '$host' is ${#host} chars (>63) — won't resolve; use a shorter branch/repo/org"; exit 1; }
+- **Two identities, kept separate.** DA (`admin.da.live`, `content.da.live`,
+  `da.live/edit`) uses the **DA** org/repo; the render host and `admin.hlx.page`
+  (code, preview, live) use the **GitHub** owner/repo. They match in the standard
+  setup, but nothing guarantees it — never assume one from the other.
+- **Refs are dashed, not slashed.** `BRANCH_HOST` is the branch with `/` → `-`. It
+  is both the hostname label **and a single path segment** in every
+  `admin.hlx.page` path, so a slashed branch splits the path and 404s. Only git
+  itself uses the literal branch. The host `<branch-host>--<repo>--<owner>` must be
+  **≤ 63 chars** or it will not resolve.
+- **content+code: the code must be LIVE before the page renders.** Commit, push to
+  the deploy branch, let Code Sync build, then poll until the block's **JS *and*
+  CSS** both return `200` on the branch host (JS-live-but-CSS-404 renders
+  unstyled). Commit **only** the block folder(s) and any `/icons/*.svg` the page
+  references; add only files you worked on (**never** `git add .` / `git add -A`);
+  keep deploy scratch **outside the working tree**; and **disclose any file beyond
+  that set before committing** — the repo is a public web root (see Guardrails).
+- **Media before content.** Every authored `<img>` must resolve at **preview**
+  time, so upload binaries first, deriving MIME and extension from the **bytes**
+  (Phase 4 §5). The multipart field name is exactly **`data`** — any other name
+  returns 200 with nothing written.
+- **The overwrite guard is bound to a decision, not a warning.** The Source-API PUT
+  clobbers an existing page and still returns 200. Carry `PLANNED_STATE`
+  (`new`/`exists`, from the 2.2 check) and `OVERWRITE_OK` (`yes` only on explicit
+  user confirmation), re-check existence immediately before writing, and **refuse
+  to write** if the state changed since planning or the overwrite was never
+  confirmed. A page can appear in the gap between planning and writing.
+- **The sequence STOPS at preview.** Upload only *stages* the doc; preview is what
+  makes it reachable. Publishing to the live host is a separate, final, gated step
+  — never inline after preview.
 
-# --- checked-request helper: every call asserts its status; a bare `curl -sS`
-#     exits 0 on 401/403/409/5xx, so an unchecked curl silently "succeeds" on a
-#     failed write. req <expected-codes> <curl-args…>: prints the body, retries a
-#     few times on network/429/5xx, and aborts (non-zero) on any other mismatch.
-#     Use it for every PUT/POST below; if a DA MCP server is used instead, apply
-#     the same rule — assert the returned status, don't assume success. ---
-req() {
-  local expect="$1"; shift
-  local attempt out code body
-  for attempt in 1 2 3 4 5; do
-    if out=$(curl -sS -w $'\n%{http_code}' "$@"); then code="${out##*$'\n'}"; else code="000"; fi
-    body="${out%$'\n'*}"
-    case ",$expect," in *",$code,"*) printf '%s' "$body"; return 0;; esac
-    case "$code" in
-      000|429|5??) sleep $((attempt * 2)); continue;;   # transient — bounded retry
-      401)         echo "❌ 401 (empty body ⇒ token expired) — re-auth (da-auth) and retry" >&2; return 1;;
-      *)           echo "❌ HTTP $code (expected $expect) — $*" >&2; return 1;;   # 4xx: do not retry
-    esac
-  done
-  echo "❌ giving up after retries (last status $code) — $*" >&2; return 1
-}
+**Verify (do not skip) — two stages.** A fragment curl is *not* enough for a new
+block, and it can *never* stand in for the browser stage.
 
-# --- content+code path ONLY: block code must be LIVE before the page renders ---
-# (skip this whole block for content-only — the code is already deployed)
-#   1. commit the new block(s) and push to the deploy branch (open a PR if the
-#      project protects $BRANCH; the branch that renders the page must contain
-#      the block code). Commit EXACTLY the block folder(s) + any /icons/*.svg the
-#      page references — nothing else, and add only files you worked on: NEVER
-#      `git add .` / `git add -A` (same rule as content-driven-development).
-#      The repo is a PUBLIC WEB ROOT: every committed file is fetchable on the
-#      branch host, so a deploy/upload helper committed alongside publishes your
-#      DA endpoints, path layout, and token plumbing. Keep that scratch OUTSIDE
-#      the working tree ("$TMPDIR"/...) so it CANNOT be swept into a commit —
-#      untracked-inside-the-repo is one `git add -A` away from published. Do not
-#      lean on an `.hlxignore` you haven't read: a project's file typically
-#      excludes `.*` and `*.md`, which does NOT cover a `tools/` directory.
-#      DISCLOSE any file you commit beyond block code + icons BEFORE committing
-#      (see Guardrails; its appearance in `git add` output is not disclosure):
-#        git add blocks/<new-block> icons/<name>.svg
-#        git status --short          # confirm NOTHING else is staged
-#        git commit -m "feat: <new-block> block" && git push origin "$BRANCH"
-#        git show --stat HEAD        # the file list you just published — verify it
-#   2. Code Sync builds automatically on push. Optionally force it (non-2xx here
-#      isn't fatal if the push already synced, so don't abort on it):
-req 200,202 -X POST -H "Authorization: Bearer $TOKEN" \
-  "https://admin.hlx.page/code/$GH_OWNER/$GH_REPO/$BRANCH_HOST/*" >/dev/null || true
-#   3. poll until the new block's JS is live on the branch host (bounded — don't hang):
-BH="https://$BRANCH_HOST--$GH_REPO--$GH_OWNER.aem.page"
-for i in $(seq 1 24); do
-  code=$(curl -s -o /dev/null -w '%{http_code}' --compressed "$BH/blocks/<new-block>/<new-block>.js")
-  [ "$code" = "200" ] && break
-  [ "$i" = "24" ] && { echo "❌ block JS not live after ~2min — check push/branch/Code Sync"; exit 1; }
-  sleep 5
-done
-#      also confirm the block's CSS is live — a block whose JS loads but CSS 404s
-#      renders unstyled:
-csscode=$(curl -s -o /dev/null -w '%{http_code}' --compressed "$BH/blocks/<new-block>/<new-block>.css")
-[ "$csscode" = "200" ] || echo "⚠ block CSS not live ($csscode) — block will render unstyled"
-
-# --- both paths ---
-# 1) Upload referenced media FIRST — every authored <img> must resolve at PREVIEW
-#    time. For each image downloaded in Phase 1, PUT the binary to DA (field name
-#    MUST be "data"). Detect the format from the BYTES and keep <image/mime>, the
-#    <media-path> extension, and the authored content.da.live URL extension all in
-#    agreement (see Phase 4 "Normalize format, extension, and MIME together") — the
-#    filename/URL suffix is not authoritative.
-#    Skip images that use a stable external URL the preview can sideload.
-req 200,201 -X PUT -H "Authorization: Bearer $TOKEN" \
-  -F "data=@<local-image>;type=<image/mime>" \
-  "https://admin.da.live/source/$DA_ORG/$DA_REPO/<media-path>" >/dev/null
-#    then reference it in the HTML as https://content.da.live/$DA_ORG/$DA_REPO/<media-path>
-
-# 2) Overwrite guard — the Source-API PUT clobbers an existing page and still
-#    returns 200, so the abort MUST be bound to an explicit decision, not to a
-#    warning. Two facts come from the Phase 2.2 plan (record them there, per path):
-#      PLANNED_STATE = new | exists   — what the 2.2 existence check saw
-#      OVERWRITE_OK  = yes            — set ONLY when the user confirmed overwriting
-#                                       an existing page; unset/no otherwise
-#    Re-GET now (auth is checked BEFORE existence, so a 401 empty body = expired
-#    token, NOT "new"). Refuse to write if the state changed since planning or the
-#    overwrite was never confirmed — a page can be created in the gap between
-#    planning and this write.
-exists=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" \
-  "https://admin.da.live/source/$DA_ORG/$DA_REPO/$P.html")
-case "$exists" in
-  404)  # absent now
-    [ "$PLANNED_STATE" = "exists" ] && { echo "❌ plan expected an existing page but it's gone (404) — STOP and reconfirm"; exit 1; }
-    ;;   # planned-new and still absent → proceed
-  200)  # present now
-    if [ "$OVERWRITE_OK" != "yes" ]; then
-      echo "❌ $P.html exists in DA but overwrite was NOT confirmed in the plan — STOP and reconfirm with the user"; exit 1
-    fi
-    if [ "$PLANNED_STATE" != "exists" ]; then
-      echo "❌ plan saw a NEW path (404) but it exists now (200) — a page was created since planning;"
-      echo "   do NOT overwrite on the stale confirmation — STOP and reconfirm"; exit 1
-    fi
-    echo "→ overwriting $P.html (existing page, confirmed in the plan)"
-    ;;
-  401) echo "❌ 401 on existence check — token expired; re-auth (da-auth) and retry"; exit 1;;
-  *)   echo "❌ unexpected $exists on existence check — resolve before writing"; exit 1;;
-esac
-
-# 3) Write content — multipart, field name MUST be "data", type text/html
-req 200,201 -X PUT -H "Authorization: Bearer $TOKEN" \
-  -F "data=@content/$P.html;type=text/html" \
-  "https://admin.da.live/source/$DA_ORG/$DA_REPO/$P.html" >/dev/null   # 201 (new) or 200 (update)
-
-# Preview — separate, required. Path WITHOUT .html; ref = $BRANCH_HOST (the dashed
-# label, NOT the slashed git branch — see the BRANCH_HOST note above).
-# The deploy sequence STOPS here, at preview. Publishing to the live host is a
-# SEPARATE, FINAL step (see "Publish to the live host" after the pre-publish
-# gate) that runs ONLY after every gate box passes AND only if the user asked to
-# publish — never inline here, before verification.
-req 200 -X POST -H "Authorization: Bearer $TOKEN" \
-  "https://admin.hlx.page/preview/$GH_OWNER/$GH_REPO/$BRANCH_HOST/$P" >/dev/null
-```
-
-**Verify (do not skip).** Two stages — a fragment curl is *not* enough for a new
-block, and it can *never* stand in for the browser stage:
-
-*Stage A — server-side (curl the plain fragment; fast, no JS):*
-
-```bash
-BASE="https://$BRANCH_HOST--$GH_REPO--$GH_OWNER.aem.page/$P.plain.html"
-curl -s --compressed "$BASE" | grep -c about:error        # expect 0 (no broken images)
-curl -s --compressed "$BASE" | grep -o '<img' | wc -l     # expect = authored image count
-curl -s --compressed "$BASE" | grep -o 'class="[a-z][a-z-]*"' | sort -u   # every authored block class present
-```
-
-Also confirm the **section count matches the plan** — top-level sections, not
-every `<div>` (blocks and rows are divs too, so a raw `<div>` count runs several
-times high). **Do not count this on `.plain.html`:** the fragment has **no**
-`<main>` (nor `<section>`) wrappers — see the metadata scope-note below — so a
-`<main> > div` count there is always 0. Count it on an artifact that has them:
-
-```bash
-# rendered (post-preview): EDS wraps each top-level section as <div class="section">
-curl -s --compressed "https://$BRANCH_HOST--$GH_REPO--$GH_OWNER.aem.page/$P" \
-  | grep -oE 'class="section[ "]' | wc -l    # expect = planned section count
-```
-
-or count the **top-level `<main> > div`** in the **local source** `content/$P.html`
-before upload — it carries the Phase 4 `<body>/<main>` skeleton, so its direct
-`<main>` children *are* the sections. Rich default content (heading / list / link
-counts) *does* survive in `.plain.html`, so spot-check that there.
+*Stage A — server-side* (`curl` the plain fragment; fast, no JS): zero
+`about:error`, the `<img>` count matches what you authored, every authored block
+class is present, and the **top-level section count** matches the plan. Count
+sections on the **rendered** page (`class="section"`) or on the local source —
+**never** as `<main> > div` on `.plain.html`, which has no `<main>` and so always
+yields 0. Commands: [deploy.md](./references/deploy.md) §4. Verify media on the
+**render host**, not by GETting `content.da.live` directly — that returns `401` by
+design even when the upload succeeded.
 
 *Stage B — browser (testing-blocks); mandatory, and curl is not a substitute.*
-**`.plain.html` shows blocks UNDECORATED** (`<div class="name">` with raw rows);
-a block's JS runs in the **browser**, so the fragment — and a curl of the block's
-CSS/JS, which only proves the files return `200` — can never tell you whether the
-block **decorated** or whether it **looks like the design**. For a **new block**
-(3B) that decoration and visual fit *are* the deploy's payoff, so this stage runs
-through **testing-blocks**: render `https://$BRANCH_HOST--$GH_REPO--$GH_OWNER.aem.page/$P`
-in a browser, confirm the block got `data-block-status="loaded"` with its
-transformed DOM and applied CSS, and **compare the rendered block against the
-Figma section screenshot** (get_screenshot from Phase 1). If **no browser is
+`.plain.html` shows blocks **undecorated**, and a `200` on a block's JS/CSS only
+proves the files exist. For a **new block (3B) or a variant (3D)** the decoration
+and visual fit *are* the deploy's payoff: render the page in a browser, confirm
+`data-block-status="loaded"` with the transformed DOM and applied CSS, and
+**compare it against the Figma section screenshot** (Phase 1). For a 3D variant,
+also re-render the **regression set** (Phase 3D condition 4). If **no browser is
 available**, Stage B is **UNVERIFIED** — the page is **preview-only**, never
-"done" (see the pre-publish gate). (Reused existing blocks are already
-known-good, so Stage A suffices for them; Stage B still applies to their visual
-fit if the token retheme changed their look.)
+"done." (Reused existing blocks are already known-good, so Stage A suffices for
+them; Stage B still applies to their visual fit if the token retheme changed their
+look.)
 
-Non-obvious rules *(da-content / EDS)*:
-- multipart field name is exactly **`data`** — other names silently 200 with
-  nothing written.
-- verify media on the **render host** (`…aem.page/$P.plain.html` or the page),
-  **not** by GETting `content.da.live/…` directly — a direct GET returns `401`
-  by design even when the upload succeeded and the pipeline internalizes it.
-- payload is a **body fragment**, not a full document.
-- upload only **stages** the doc; the page is not reachable until **preview**.
-  Referenced binaries/external image URLs must be reachable at **preview** time.
-- branch host `<branch-host>--<gh-repo>--<gh-owner>` must be **≤ 63 chars** or it
-  won't resolve (asserted by the `host` length check in the deploy block above;
-  `<branch-host>` is the deploy ref with slashes replaced by dashes).
-
-For many pages, drive `PUT → preview` (publish stays a gated, post-verify step —
-see below) with a concurrency pool + retry (`429`/`5xx`) rather than a
-hand-rolled loop. An unattended multi-page run can outlast a single ~1h token, so
-**refresh the token before long batches and on any `401`-with-empty-body**, then
-resume — don't abort the whole run. Each page still clears the pre-publish gate
-before it is eligible to publish; a gate failure on one page blocks that page's
-publish, not the batch.
+For **many pages**, drive `PUT → preview` with a concurrency pool + retry and
+refresh the token before long batches and on any `401`-with-empty-body
+([deploy.md](./references/deploy.md) §6). Each page clears the gate on its own; a
+gate failure on one page blocks that page's publish, not the batch.
 
 ### Pre-publish gate — the page is not "done" until every box is checked
 
@@ -1160,13 +969,7 @@ hold:
    page reachable at the preview host is usually enough. Do **not** publish to
    "save a round-trip," and never publish inline right after preview.
 
-```bash
-# Preconditions asserted by the caller: gate fully passed AND publish requested.
-# ref = $BRANCH_HOST (dashed label, not the slashed git branch — see BRANCH_HOST note).
-req 200 -X POST -H "Authorization: Bearer $TOKEN" \
-  "https://admin.hlx.page/live/$GH_OWNER/$GH_REPO/$BRANCH_HOST/$P" >/dev/null \
-  || { echo "❌ publish failed — page stays preview-only"; exit 1; }
-```
+Command: [references/deploy.md](./references/deploy.md) §7.
 
 ---
 
