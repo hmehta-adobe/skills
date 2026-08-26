@@ -230,36 +230,20 @@ background: that carries via a `section-metadata` `Style` class or a block's
 own defined dark/light variant (Phase 4). Read annotations per
 [references/annotation-contract.md](./references/annotation-contract.md).
 
-> **Segmentation heuristic** — when the frame has no explicit grouping, derive
-> the section list like this, not from the raw child order:
-> 1. Sort the frame's direct children by `y` (top to bottom).
-> 2. **Drop pure-decoration layers** from the section list — full-bleed
->    background rectangles, gradients, blurs, absolutely-positioned shapes with
->    no text or interactive child. Record each as the *background* of the
->    content it sits behind (→ Phase 4 `section-metadata`); don't emit it as a
->    section of its own.
-> 3. **Merge siblings that form one visual band** — nodes whose vertical
->    extents overlap or sit within ~one line-height of each other (a background
->    rect + a heading group + a button row are *one* section, not three).
-> 4. **Reconcile the count against the screenshot** before resolving: the eye
->    sees the real sections; a mismatch means you over- or under-split — fix it
->    before Phase 2.
+Three judgement calls decide what that inventory actually contains — details in
+[references/reading-the-design.md](./references/reading-the-design.md):
 
-> **Placeholder content is common — don't ship it.** Designs routinely contain
-> dummy copy (`Lorem ipsum`, a CTA literally labelled "Button" or "Lorem
-> Ipsum", the same card title repeated across every card) and unfilled slots
-> (empty or transparent image cells, blank stat boxes). Author from the **real
-> text and media in the design context** — not from the placeholder and not from
-> invented filler. Where it's clearly placeholder, **flag it in the plan and
-> confirm the real copy/media with the user** rather than publishing "Lorem
-> Ipsum" to a live page. Distinct items (cards, tabs, news entries) need
-> **distinct** copy and images — repeated-identical content is itself a
-> placeholder smell. If the design *itself* carries only placeholder, you cannot
-> manufacture the real content: stop and get it from the user before publish.
-
-> Site chrome (nav bar, footer) is usually **not page body** — in EDS it is
-> sourced from separate `/nav` and `/footer` documents via the header/footer
-> blocks. Don't author it into the page unless the user asks.
+- **Segmentation** (§1) — derive sections by sorting children on `y`, dropping
+  pure-decoration layers (record them as the *background* of the content they sit
+  behind), merging siblings that form one visual band, then **reconciling the count
+  against the full-frame screenshot** before resolving.
+- **Placeholder content** (§2) — designs routinely ship `Lorem ipsum`, CTAs
+  labelled "Button", repeated-identical cards, and empty image cells. Author from
+  the **real** text/media, **flag** anything placeholder in the plan, and never
+  publish it; if the design carries only placeholder, stop and get the real content
+  from the user.
+- **Site chrome** (§3) — nav and footer are usually **not** page body; EDS sources
+  them from separate `/nav` and `/footer` documents. Don't author them unless asked.
 
 ---
 
@@ -505,8 +489,8 @@ and an un-invoked required skill means this phase is **not complete**:
       content. Naming which page was read (or that none exists) is the evidence —
       "I surveyed the blocks" is not this box.
 - [ ] **da-content** reference docs loaded (`html-content.md` / `platform.md` / `media.md`)
-- [ ] **This skill's own references loaded** — `authoring-rules.md` before Phase 4
-      and `deploy.md` before Phase 5. SKILL.md holds only one-line pointers for
+- [ ] **This skill's own references loaded** — [authoring-rules.md](./references/authoring-rules.md) before
+      Phase 4 and [deploy.md](./references/deploy.md) before Phase 5. SKILL.md holds only one-line pointers for
       both, so authoring or deploying without them means working from a summary.
 - [ ] **block-collection-and-party** invoked for every reused block *(if any 3A)*
 - [ ] **content-modeling** + **content-driven-development** invoked for every new block *(if any 3B)*
@@ -536,17 +520,10 @@ lives in that block's own CSS, you cannot reproduce it without editing the
 block (forbidden), so route the section to **Phase 3B** (new block). Global,
 token-level differences (palette, fonts, type scale) do **not** break reuse —
 they are absorbed once by retargeting the project's design tokens (see
-Guardrails). **Judge the composition the project actually ships, not a variant you picked.**
-Where 2.0(a) found the block **in use on a real page**, that page's instance —
-with its **full class token list** — is the rendered example, ahead of any generic
-example. Variant tokens **compose, and a later token can override an earlier
-one's layout**: a token that switches the block to a scrolling or single-column
-viewport makes an earlier variant's grid rule irrelevant. So a divergence verdict
-reached from one variant's CSS in isolation, when the design system ships several
-tokens together, is a verdict about a rendering that never happens — re-check
-against the real composition before routing the section to 3B. Reading the
-block's CSS source *at all* is the weakest evidence here: it is what a block can
-do alone, not what it does on this site.
+Guardrails). **Judge the composition the project actually ships, not a variant you picked** —
+where 2.0(a) found the block in use, that page's instance with its **full class
+token list** is the rendered example, ahead of any generic one (2.1 rule 2 explains
+why: tokens compose, and a later one can override an earlier one's layout).
 
 **How to run the visual check — reuse testing-blocks, don't invent
 one:** get a rendered example of the candidate block — a real page's instance
@@ -690,8 +667,8 @@ not here.
    existing selector you are skinning a shared block, which is forbidden.
 2. **JS is untouched, or gains one gated branch.** At most a new branch guarded on
    the token (`block.classList.contains('compact')`), leaving every existing path
-   byte-identical — see **building-blocks**' `js-guidelines.md` on variant
-   detection. Reworking the decorate function is 3B.
+   byte-identical — see **building-blocks**' variant-detection
+   guidance. Reworking the decorate function is 3B.
 3. **The authoring model is unchanged** — same rows, same cells, same order. A
    variant needing a different content model would break every page already using
    the block: 3B.
@@ -1069,9 +1046,8 @@ Command: [references/deploy.md](./references/deploy.md) §7.
   doesn't match the design using only its defined variants — including how it
   treats secondary text and CTAs over any background or media — it's an additive
   variant (3D) or a new block (3B), never reuse-and-note-the-gap (Phase 3A reuse
-  gate). Judge that look as the **token combination the
-  project actually composes**, not one variant in isolation: tokens compose, and a
-  later one can override an earlier one's layout.
+  gate), judged as the **composed token set the project actually ships** — not one
+  variant in isolation (2.1 rule 2).
 - **Infer, then confirm — never silently guess.** For an unannotated section
   you may *infer* the mapping (Phase 2.1). High-confidence sections build
   without blocking, but you must **ask before building** any low-confidence or
