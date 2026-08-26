@@ -807,15 +807,21 @@ req() {
 #   1. commit the new block(s) and push to the deploy branch (open a PR if the
 #      project protects $BRANCH; the branch that renders the page must contain
 #      the block code). Commit EXACTLY the block folder(s) + any /icons/*.svg the
-#      page references — nothing else. The repo is a PUBLIC WEB ROOT: everything
-#      committed is fetchable on the branch host, so a deploy/upload helper script
-#      committed alongside publishes your DA endpoints and path layout. Such
-#      scripts are scratch — leave them uncommitted (or .hlxignore them), and
+#      page references — nothing else, and add only files you worked on: NEVER
+#      `git add .` / `git add -A` (same rule as content-driven-development).
+#      The repo is a PUBLIC WEB ROOT: every committed file is fetchable on the
+#      branch host, so a deploy/upload helper committed alongside publishes your
+#      DA endpoints, path layout, and token plumbing. Keep that scratch OUTSIDE
+#      the working tree ("$TMPDIR"/...) so it CANNOT be swept into a commit —
+#      untracked-inside-the-repo is one `git add -A` away from published. Do not
+#      lean on an `.hlxignore` you haven't read: a project's file typically
+#      excludes `.*` and `*.md`, which does NOT cover a `tools/` directory.
 #      DISCLOSE any file you commit beyond block code + icons BEFORE committing
 #      (see Guardrails; its appearance in `git add` output is not disclosure):
 #        git add blocks/<new-block> icons/<name>.svg
 #        git status --short          # confirm NOTHING else is staged
 #        git commit -m "feat: <new-block> block" && git push origin "$BRANCH"
+#        git show --stat HEAD        # the file list you just published — verify it
 #   2. Code Sync builds automatically on push. Optionally force it (non-2xx here
 #      isn't fatal if the push already synced, so don't abort on it):
 req 200,202 -X POST -H "Authorization: Bearer $TOKEN" \
@@ -995,6 +1001,12 @@ preview-only and never call it "done."**
 - [ ] **Every new block's code is live** — its JS **and** CSS return `200` on the
       branch host. (A `200` on the file proves it *exists*, not that the block
       *decorated* — that is the Stage B decoration box below.)
+- [ ] **The commit published nothing but block code and icons** *(content+code
+      only)* — `git show --stat` on what you pushed lists only
+      `blocks/<new-block>/*` and `/icons/*.svg`. Every other file is now fetchable
+      on the branch host; the usual offenders are one-off upload/deploy helpers and
+      other scratch. If something extra went up, **remove it and say so** — noting
+      it is not fixing it, and the file stays served until you do.
 - [ ] **0 `about:error`** and the `<img>` count matches what you authored (both on
       `.plain.html`), and the **top-level section count** matches the plan —
       counted on the **rendered page** (`class="section"` under `<main>`) or the
@@ -1108,12 +1120,22 @@ req 200 -X POST -H "Authorization: Bearer $TOKEN" \
   section-styled bands look like they need bespoke blocks and makes fixable
   fidelity gaps look unfixable.
 - **The repo is a public web root — keep the commit to block code and icons.**
-  Everything committed is fetchable on the branch host, so deploy/upload helper
-  scripts committed alongside publish your DA endpoints, path layout, and
-  workflow. They are scratch: leave them out, or `.hlxignore` them. **Disclose any
-  file you commit beyond block code + `/icons/*.svg` before committing** — a
-  scope expansion buried in `git add` output is not disclosure, and it removes the
-  user's chance to catch it (Phase 5 step 1).
+  Every committed file is fetchable on the branch host, so a deploy/upload helper
+  committed alongside publishes your DA endpoints, path layout, and token
+  plumbing. Write that scratch **outside the working tree** rather than trusting
+  yourself to exclude it later, add only files you worked on (never `git add .` /
+  `git add -A`), and don't lean on an `.hlxignore` you haven't read — excluding
+  `.*` and `*.md` does not cover a `tools/` directory. A script hardcoded to one
+  page, one org, and one ref is **not tooling**: nothing in it is reusable, and if
+  the approach it encodes turned out to be wrong, committing it preserves that
+  mistake for whoever finds it next.
+- **Authorization to commit covers the artifacts the task requires — not
+  everything you happened to create.** "Commit this as well," said about a page's
+  rendering, means the block code and icons that page needs. **Disclose any file
+  beyond that set before committing.** A scope expansion buried in `git add`
+  output is not disclosure: it is technically visible and practically invisible,
+  and it removes the user's only chance to catch it before it is published
+  (Phase 5 step 1).
 - **New, additive blocks only — don't skin shared code.** Never modify an
   existing block's implementation (`blocks/<existing>/*`), `scripts.js`, or
   `head.html` to make it match a design, and never add per-section or
