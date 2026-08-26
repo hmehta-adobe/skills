@@ -1,6 +1,6 @@
 ---
 name: figma-to-content
-description: "Use this to turn a Figma design into an AEM Edge Delivery Services (EDS / AEM / Franklin / Helix) content page in Document Authoring (DA, da.live). Triggers: \"build this Figma frame in EDS\", \"turn this Figma design into a DA page\", \"publish this design to da.live\", or providing a figma.com URL for a page. Reads the frame (and any annotations) via a Figma MCP, resolves each section to an existing block, a new isolated block, or default content (inferred against the project's existing pages and blocks and confirmed with you, or read from annotations when the frame happens to have them), generates DA-compliant body-fragment HTML, and deploys via the DA Source API + preview."
+description: "Use this to turn a Figma design into an AEM Edge Delivery Services (EDS / AEM / Franklin / Helix) content page in Document Authoring (DA, da.live). Triggers: \"build this Figma frame in EDS\", \"turn this Figma design into a DA page\", \"publish this design to da.live\", or providing a figma.com URL for a page. Reads the frame (and any annotations) via a Figma MCP, resolves each section to an existing block, an additive variant on one, a new isolated block, or default content (inferred against the project's existing pages and blocks and confirmed with you, or read from annotations when the frame happens to have them), generates DA-compliant body-fragment HTML, and deploys via the DA Source API + preview."
 license: Apache-2.0
 metadata:
   version: "1.0.0"
@@ -30,16 +30,19 @@ Classify each section of the design, then follow the matching path:
 - **Content only** — every section maps to a block that **already exists** in
   the target project, or to **default content** (plain headings/paragraphs/
   images/buttons — no block). Author content and deploy. No code changes.
-- **Content + code** — a section needs a block the project **does not have**,
-  or an existing block matches structurally but its **styling diverges** (the
-  look lives in block-specific CSS you'd have to edit). Create it as a **new,
-  isolated block** (via the block-building skills), push the code, then author
-  content and deploy. **Never skin an existing block or add per-section rules
-  to global CSS** — new, additive blocks only. (Retargeting the project's
-  global design tokens is a separate, allowed theming step; see Guardrails.)
+- **Content + code** — a section needs code the project doesn't have yet. Two
+  forms, **cheapest first**: an existing block fits structurally but needs a look
+  it doesn't define ⇒ add an **additive variant** to that block (→ **3D**, always
+  user-confirmed); the project has no suitable block at all, or the divergence is
+  too deep for a variant to express ⇒ a **new, isolated block** (→ **3B**). Either
+  way push the code, then author content and deploy. **Never skin an existing
+  block's existing rules, and never add per-section rules to global CSS** — a
+  variant *adds* rules under a new class token, it does not change the ones
+  already there. (Retargeting the project's global design tokens is a separate,
+  allowed theming step; see Guardrails.)
 
-A single design usually mixes all three (known blocks + default content + one
-or two new blocks).
+A single design usually mixes several of these (known blocks + default content +
+maybe a variant + one or two new blocks).
 
 ## When to use
 
@@ -262,9 +265,13 @@ own defined dark/light variant (Phase 4). Read annotations per
 
 ## Phase 2 — Resolve each section
 
-Every section resolves to exactly one of: **existing block** (→ 3A),
-**default content** (→ 3C), or **new block** (→ 3B). How that decision is
-reached depends on whether the section is annotated.
+Every section resolves to exactly one of: **existing block as-is** (→ 3A),
+**default content** (→ 3C), **existing block + a new additive variant** (→ 3D),
+or **new block** (→ 3B). **Prefer the cheapest option that honestly fits** — no
+code (3A / 3C), then a variant on a block that already exists (3D), then new
+block code (3B). A design that resolves to four new blocks on a mature site is
+usually a discovery or laddering failure, not four novel components. How the
+decision is reached depends on whether the section is annotated.
 
 ### 2.0 — Survey what already exists: pages first, then blocks (always)
 
@@ -351,15 +358,25 @@ mapping — do not dump it as unresolved:
      never happens. Where 2.0(a) found the block in use, "reuse the existing
      composition" is the resolution — the section is solved, not merely mappable.
    - **Both fit → existing block** (3A).
-   - **Structure fits but the look diverges** (bespoke card/layout/decoration
-     the block's CSS can't produce without editing it), **or nothing fits →
-     new block** (3B).
+   - **Structure fits but the look diverges — do not jump to a new block.** Ask
+     first whether the difference can be expressed as an **additive variant** on
+     that block: a new class token whose rules are scoped entirely under it.
+     Column count, density, spacing, alignment, a color treatment, a border or
+     radius are typical variant material. **Yes → 3D** (always user-confirmed).
+     **No → new block (3B)** — where "no" means it needs a different authoring
+     model, block JS the block doesn't have, or rules that would override most of
+     the block's own styling rather than add to them (that's a fork wearing a
+     variant's name).
+   - **Nothing in the palette fits at all → new block** (3B).
    - **A section carrying an interactive control** — tabs / segmented switch,
      accordion, carousel or slider, toggle — is structural divergence no static
      block reproduces: route it to a **new block** (3B), or, if the control is
      non-essential chrome, **confirm with the user** whether to keep it or
      flatten it to static content. Don't silently drop the interaction or fake
-     it with a look-alike static block.
+     it with a look-alike static block. (A variant that must introduce *new
+     interactive JS* into a shared block is the riskiest kind — prefer 3B unless
+     the block already implements that behavior for another variant, in which case
+     you are enabling it, not writing it.)
 3. Attach a **confidence** to every inference: `high` (clear reuse match, or
    clearly novel) or `low` (structure fits but styling is borderline; two
    blocks plausibly fit; new-variant-vs-new-block; content model ambiguous).
@@ -384,12 +401,28 @@ and needs real content before publish. State per section **what discovery found*
 auditable.
 
 - **High-confidence sections auto-proceed through building** (Phases 3–4) —
-  don't block on them.
+  don't block on them. **One exception: a 3D variant never auto-proceeds**, at any
+  confidence — see the next bullet.
+- **A 3D variant always requires explicit confirmation.** A new isolated block is
+  self-contained; a variant lands inside a block that **other pages, and often
+  other teams, already use** — so the call belongs to the repo owner, not to you.
+  Present: the block, the exact new token, what the added rules do, **the pages
+  find-test-content found using that block** (who is exposed if you get the
+  scoping wrong), and the 3B alternative with its cost. Wait for the answer.
 - **Stop and ask before building** any `low`-confidence section or genuine
-  ambiguity, offering the concrete choice. On a site with existing content the
-  options **must include "reuse the existing composition on `<page>`"** whenever
-  2.0(a) found one — alongside reuse this block vs. new block; which block; new
-  variant vs. new block. Wait for the answer.
+  ambiguity, offering the choice as a **cheapest-first ladder, not a menu of
+  equals**:
+  1. **reuse the existing composition on `<page>`** (no code) — **must** be on the
+     ladder whenever 2.0(a) found one;
+  2. **default content + section styling** (no code) — whenever the section may not
+     need a block at all (2.1 rule 1);
+  3. **an additive variant** `<block> <new-token>` (small, scoped code → 3D);
+  4. **a new isolated block** `<name>` (most code → 3B).
+
+  Name your recommendation and why, and say which options discovery **ruled out
+  and how** — an option absent without explanation reads as an option that doesn't
+  exist. "Edit the shared block's existing rules" is never on the ladder; that is
+  exactly what 3D's scoping boundary exists to avoid.
 - **Pause once before deploying (Phase 5)** whenever the plan contains any
   **inferred** (unannotated) mapping: show the final plan and get a single
   confirmation before the da.live write/preview — deploy is outward-facing and
@@ -460,6 +493,7 @@ Derive the manifest from the plan:
 | An **existing-block reuse** (3A) | **block-collection-and-party** (authoring model + a rendered example) **and testing-blocks** for the visual reuse gate (rendered block vs. the Figma section screenshot). |
 | A **new block** (3B) | **content-modeling** (design the authoring model), then **content-driven-development** (which runs **building-blocks** and **testing-blocks**). Do **not** hand-write block JS/CSS from this file. |
 | **Default content** (3C) | **da-content** only (no block skills). |
+| An **additive variant** (3D) | **find-test-content** (the pages using that block — that list *is* your regression set), **block-collection-and-party** (its authoring model and the variants it already defines), then **content-driven-development** — which covers block *modifications*, not only new blocks — and **testing-blocks** run **twice**: the new section's fidelity, **and** the unchanged rendering of every page in the regression set. |
 
 Record the manifest as an evidence-bearing checklist and tick each item **only
 after you actually invoked the skill** — "I know what it does" is not invocation,
@@ -473,6 +507,9 @@ and an un-invoked required skill means this phase is **not complete**:
 - [ ] **da-content** reference docs loaded (`html-content.md` / `platform.md` / `media.md`)
 - [ ] **block-collection-and-party** invoked for every reused block *(if any 3A)*
 - [ ] **content-modeling** + **content-driven-development** invoked for every new block *(if any 3B)*
+- [ ] **Every variant user-confirmed and regression-proven** — the user said yes to
+      this specific token, its rules are scoped under it, and every page
+      find-test-content listed for that block still renders unchanged *(if any 3D)*
 - [ ] **Default-content** sections authored via **da-content** alone — **no** block-building skills invoked for them *(if any 3C)*
 - [ ] **testing-blocks** invoked — its browser render + visual comparison **is** the
       Stage B pre-publish check (Phase 5); a run with **no** browser available
@@ -521,10 +558,12 @@ implementation to design" step, comparing that screenshot against the Figma
 only its primary element: one that (say) whitens a heading over dark media but
 leaves the supporting text and buttons at body color passes a structural check
 yet renders that text illegibly — a divergence the token retheme cannot fix.
-Divergence beyond what the token retheme explains ⇒ new block (or a new
-variant), not reuse. This outcome is **blocking**: the section is not resolved
-until its rendered look — that text included — is faithful, and the fix is a new
-isolated block/variant, never an edit to the shared block. Recording the gap in
+Divergence beyond what the token retheme explains ⇒ **not reuse**: take it to
+**3D** (an additive variant) when the gap is expressible as rules scoped under one
+new token, else **3B** (a new block). This outcome is **blocking**: the section is
+not resolved until its rendered look — that text included — is faithful, and the
+fix is a scoped variant or a new isolated block, **never an edit to the shared
+block's existing rules**. Recording the gap in
 the plan and reusing the block anyway is a **plan note, not a fix** — the Phase 5
 pre-publish gate treats such a box as failed.
 
@@ -537,8 +576,8 @@ the Figma content into that structure:
 - **Variants** → extra class tokens on the block (e.g. `cards highlight`).
   Only apply a variant the block actually defines. **Prefer the exact token set a
   real page composes** (2.0(a)) over a set you assemble yourself — that
-  combination is known to render, and its ordering may matter. (Adding a *new*
-  variant = modifying an existing block = Phase 3B, not 3A.)
+  combination is known to render, and its ordering may matter. (Defining a *new*
+  variant is **3D** — it is code, and it needs the user's confirmation.)
 - **Links/buttons** → a **standalone link** (the only content of its
   paragraph) auto-promotes to a button; wrap in `<strong>` for a primary
   button, `<em>` for secondary. Do not add `target="_blank"` (decoration
@@ -551,8 +590,10 @@ the Figma content into that structure:
 
 ## Phase 3B — Create a NEW block (content + code)
 
-Only for sections Phase 2 routed here (a needed block is missing, or an existing
-block's look diverges) — the **3B** case. **Guardrails (strict):**
+Only for sections Phase 2 routed here — the project has no suitable block, or the
+divergence is too deep for an additive variant to express — the **3B** case.
+**Check 3D first:** on a site that already has blocks, a new block is the answer of
+last resort, not the first. **Guardrails (strict):**
 
 - Create **new, isolated block folders** only (`blocks/<new-name>/`).
 - **Do NOT** skin this block by editing an existing block, `scripts.js`, or
@@ -623,6 +664,57 @@ block wrapper:
   2.0(a) found in use rather than reaching for a block.
 
 *(da-content html-content.md §6)*
+
+---
+
+## Phase 3D — Extend an EXISTING block with an ADDITIVE VARIANT
+
+For sections Phase 2 routed here: the block's **authoring model fits**, the look
+doesn't, and the gap is expressible as rules scoped under **one new class token**.
+This is the path that keeps a mature site from accumulating five near-duplicate
+card blocks. It is also the only path in this skill that writes into code **other
+pages already depend on**, so it is fenced on both ends.
+
+**It is never automatic.** The user confirmed *this specific token* in Phase 2.2,
+at any confidence level. If they haven't, you are in 3B or you are still asking —
+not here.
+
+**The four boundary conditions — all four, or it's 3B:**
+
+1. **CSS is additive and scoped.** Every new rule sits under the new token
+   (`.cards.compact { … }`). **Zero** rules changed, removed, or added at the bare
+   block level (`.cards`) or under any existing variant. The moment you edit an
+   existing selector you are skinning a shared block, which is forbidden.
+2. **JS is untouched, or gains one gated branch.** At most a new branch guarded on
+   the token (`block.classList.contains('compact')`), leaving every existing path
+   byte-identical — see **building-blocks**' `js-guidelines.md` on variant
+   detection. Reworking the decorate function is 3B.
+3. **The authoring model is unchanged** — same rows, same cells, same order. A
+   variant needing a different content model would break every page already using
+   the block: 3B.
+4. **The regression set renders unchanged.** The pages find-test-content listed for
+   this block (2.0(a)) **are** the regression set. Render each before and after via
+   **testing-blocks** and confirm no visual change. **An un-rendered regression set
+   is a failed check, not a passed one** — the same fail-closed rule as the rest of
+   this skill.
+
+**Fork test.** If the variant's rules mostly *override* the block's styling rather
+than *add* to it, it is a fork wearing a variant's name — the block now has two
+personalities, the next reader cannot tell which rules serve which, and you have
+taken on the shared-code risk without the benefit. Build 3B instead.
+
+**Naming.** The token obeys the same EDS rules as a block name (3B): lowercase
+alphanumeric + single hyphens, no underscores, no double dashes, not
+digit-initial. It must not collide with a token the block already defines, or with
+a section `Style` class (2.0(a) step 3 listed the ones in use).
+
+**Build route — invoke content-driven-development**, which explicitly covers block
+*modifications*, not only new blocks. Don't hand-write the variant CSS from this
+file. Its testing-blocks pass serves both jobs: the new section's fidelity **and**
+the regression set.
+
+Push the variant under the same commit discipline as new-block code (Phase 5), and
+report which shared block you extended and which pages you re-verified (Phase 6).
 
 ---
 
@@ -1001,6 +1093,10 @@ preview-only and never call it "done."**
 - [ ] **Every new block's code is live** — its JS **and** CSS return `200` on the
       branch host. (A `200` on the file proves it *exists*, not that the block
       *decorated* — that is the Stage B decoration box below.)
+- [ ] **Every variant is additive** *(if any 3D)* — `git diff` on the extended
+      block shows **only additions scoped under the new token**: no existing
+      selector, no existing JS path, and no authoring-model row/cell touched. An
+      edit to a shared rule fails this box outright, however small.
 - [ ] **The commit published nothing but block code and icons** *(content+code
       only)* — `git show --stat` on what you pushed lists only
       `blocks/<new-block>/*` and `/icons/*.svg`. Every other file is now fetchable
@@ -1028,6 +1124,11 @@ preview-only and never call it "done."**
       `data-block-status="loaded"`, shows its expected transformed DOM, and its
       CSS applied. The Stage A "code is live" `200` does **not** satisfy this — a
       block whose JS 500s on load still serves its JS file with a `200`.
+- [ ] **The regression set renders unchanged** *(if any 3D)* — every page
+      find-test-content listed for the extended block looks as it did before the
+      variant, compared via **testing-blocks**. Un-rendered counts as failed. This
+      is the box that makes extending a shared block *safe*, not merely *cheap* —
+      without it, 3D is the skinning the guardrails forbid.
 - [ ] **The rendered result matches the design** — run **testing-blocks** to
       screenshot each new or restyled block on the rendered page and compare it to
       the Figma section screenshot (get_screenshot, Phase 1). A visible mismatch
@@ -1080,6 +1181,9 @@ req 200 -X POST -H "Authorization: Bearer $TOKEN" \
   reader tell *discovery ran and found nothing* from *discovery never ran*.
 - **New blocks created** (content+code) and where their code was pushed —
   plus **every file committed beyond block code and icons**, if any, and why.
+- **Variants added to existing blocks** (3D) — which shared block, which token,
+  that the user confirmed it, and **which pages you re-rendered to prove nothing
+  else changed**. Name any page in the regression set you could *not* verify.
 - **How each section resolved** — the confirmed plan (reuse existing composition /
   reuse / default content / new block per section), flagging any that were
   **inferred** (vs. annotated) and any the user deferred or skipped, and why.
@@ -1136,20 +1240,33 @@ req 200 -X POST -H "Authorization: Bearer $TOKEN" \
   output is not disclosure: it is technically visible and practically invisible,
   and it removes the user's only chance to catch it before it is published
   (Phase 5 step 1).
-- **New, additive blocks only — don't skin shared code.** Never modify an
-  existing block's implementation (`blocks/<existing>/*`), `scripts.js`, or
-  `head.html` to make it match a design, and never add per-section or
-  block-specific rules to global CSS — build a new isolated block instead.
-  **Allowed, and expected once per project:** retargeting the **global design
+- **Additive only — never skin shared code.** Never *change* an existing block's
+  rules or decorate path, `scripts.js`, or `head.html` to make it match a design,
+  and never add per-section or block-specific rules to global CSS. **Two additive
+  extensions are allowed:** a **new isolated block** (3B), and a **new variant
+  token on an existing block** (3D) whose rules are scoped entirely under that
+  token, whose JS delta is at most one gated branch, and which is user-confirmed
+  and regression-proven against the pages find-test-content lists. The line that
+  matters is **add vs. change**, not new-file vs. existing-file: a scoped variant
+  adds behavior no existing page can see, while editing a shared rule silently
+  restyles pages you never looked at.
+  **Also allowed, and expected once per project:** retargeting the **global design
   tokens** — the `:root` custom properties and base typography/button styling
   in `styles/styles.css` — to the design system. That token retheme is how a
   *reused* block picks up the design's palette/type; restyling a *specific*
-  existing block is not (→ new block).
+  existing block is not (→ 3D or 3B).
+- **Prefer the cheapest honest resolution — block proliferation is a defect.**
+  The ladder is: reuse an existing composition → default content + section styling
+  → an additive variant → a new block. Four new blocks for one page on a mature
+  site is a discovery or laddering failure, not four novel components:
+  near-duplicate blocks multiply the authoring models an author must learn, the CSS
+  someone must maintain, and the ambiguity the next migration has to resolve.
 - **Reuse needs structural *and* visual fit** — a matching authoring model is
   not enough; if the block's existing rendered look (after the token retheme)
   doesn't match the design using only its defined variants — including how it
-  treats secondary text and CTAs over any background or media — it's a new
-  block (Phase 3A reuse gate). Judge that look as the **token combination the
+  treats secondary text and CTAs over any background or media — it's an additive
+  variant (3D) or a new block (3B), never reuse-and-note-the-gap (Phase 3A reuse
+  gate). Judge that look as the **token combination the
   project actually composes**, not one variant in isolation: tokens compose, and a
   later one can override an earlier one's layout.
 - **Infer, then confirm — never silently guess.** For an unannotated section
