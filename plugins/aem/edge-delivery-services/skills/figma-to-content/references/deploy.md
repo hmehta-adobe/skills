@@ -24,7 +24,8 @@ GH_REPO=<gh-repo>      # GitHub repo
 # In the standard setup all four match: DA_ORG=GH_OWNER=<owner>, DA_REPO=GH_REPO=<repo>.
 BRANCH=<branch>        # git deploy ref (usually main). For content+code this MUST be
                        # the branch the new-block code was pushed to and Code Sync built.
-BRANCH_HOST=${BRANCH//\//-}   # host label: slashes → dashes ('feature/x' → 'feature-x').
+BRANCH_HOST=${BRANCH:?BRANCH is not set}
+BRANCH_HOST=${BRANCH_HOST//\//-}   # host label: slashes → dashes ('feature/x' → 'feature-x').
                               # Used BOTH for the aem.page/aem.live hostname AND as the ref
                               # segment in every admin.hlx.page path (code/preview/live): that
                               # ref is a SINGLE path segment, so a slashed branch ('figma/x')
@@ -184,11 +185,22 @@ the user asked to publish — never inline here, before verification (SKILL.md).
 
 ## 4. Stage A verification commands (server-side, no browser)
 
+**Fetch once and assert the status — never pipe a bare `curl` into `grep` here.**
+On a failed fetch `grep -c about:error` returns `0` and `grep -o '<img' | wc -l`
+returns `0`, so a gate box that means "no broken images" **passes on a read that
+never happened**. A false PASS on the pre-publish gate is worse than no check at
+all: fail the box instead.
+
 ```bash
 BASE="https://$BRANCH_HOST--$GH_REPO--$GH_OWNER.aem.page/$P.plain.html"
-curl -s --compressed "$BASE" | grep -c about:error        # expect 0 (no broken images)
-curl -s --compressed "$BASE" | grep -o '<img' | wc -l     # expect = authored image count
-curl -s --compressed "$BASE" | grep -o 'class="[a-z][a-z-]*"' | sort -u   # every authored block class present
+frag=$(mktemp)
+code=$(curl -s --compressed -m 20 -o "$frag" -w '%{http_code}' "$BASE")
+[ "$code" = "200" ] && [ -s "$frag" ] || {
+  echo "❌ Stage A fetch failed ($code, $(wc -c <"$frag") bytes) — gate boxes FAIL; do not read as 'clean'"; exit 1; }
+
+grep -c about:error "$frag"                              # expect 0 (no broken images)
+grep -o '<img' "$frag" | wc -l                           # expect = authored image count
+grep -o 'class="[a-z][a-z-]*"' "$frag" | sort -u         # every authored block class present
 ```
 
 **Section count.** Count top-level sections, not every `<div>` (blocks and rows are
@@ -198,8 +210,11 @@ divs too, so a raw count runs several times high). **Do not count it on
 
 ```bash
 # rendered (post-preview): EDS wraps each top-level section as <div class="section">
-curl -s --compressed "https://$BRANCH_HOST--$GH_REPO--$GH_OWNER.aem.page/$P" \
-  | grep -oE 'class="section[ "]' | wc -l    # expect = planned section count
+page=$(mktemp)
+code=$(curl -s --compressed -m 20 -o "$page" -w '%{http_code}' \
+  "https://$BRANCH_HOST--$GH_REPO--$GH_OWNER.aem.page/$P")
+[ "$code" = "200" ] && [ -s "$page" ] || { echo "❌ render fetch failed ($code) — section-count box FAILS"; exit 1; }
+grep -oE 'class="section[ "]' "$page" | wc -l    # expect = planned section count
 ```
 
 or count the top-level `<main> > div` in the **local source** `content/$P.html`

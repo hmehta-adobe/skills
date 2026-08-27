@@ -276,14 +276,14 @@ pages **before** surveying blocks. On the Phase 0 read channel:
    combinations** on it. Do this *before* concluding a block doesn't fit.
 3. **Read the same-family page's composition** and record three things: the
    **full class token list** per block (not one variant), **which sections carry
-   no block at all**, and the section `Style` vocabulary the project uses:
-   `curl -s <read-channel>/<path>.plain.html | grep -oE 'class="[a-z][a-z0-9 -]*"' | sort -u`
-   **Assert the fetch first.** A failed read piped into `grep` gives empty output
-   that looks exactly like "this page uses no blocks" — check the status and a
-   non-empty body before believing the result, and retry once (a proxying dev
-   server often 502s on the first read of a page). Step 2's variant list is a
-   **union across instances**, so only this step shows which tokens actually
-   compose together.
+   no block at all**, and the section `Style` vocabulary the project uses. Use the
+   **status-asserting fetch** in
+   [existing-content-discovery.md](./references/existing-content-discovery.md) §4 —
+   **never a bare `curl … | grep`**, which on a failed read prints nothing and reads
+   exactly like "this page uses no blocks" (a proxying dev server routinely 502s on
+   the first read of a page, so that fetch retries before giving up). Step 2's
+   variant list is a **union across instances**, so only this step shows which
+   tokens actually compose together.
 
 A real page is **authoritative over any block's CSS read in isolation**: it shows
 which variant combinations and section classes the design system composes
