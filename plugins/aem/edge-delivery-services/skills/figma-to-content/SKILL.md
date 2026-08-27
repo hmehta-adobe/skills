@@ -278,6 +278,12 @@ pages **before** surveying blocks. On the Phase 0 read channel:
    **full class token list** per block (not one variant), **which sections carry
    no block at all**, and the section `Style` vocabulary the project uses:
    `curl -s <read-channel>/<path>.plain.html | grep -oE 'class="[a-z][a-z0-9 -]*"' | sort -u`
+   **Assert the fetch first.** A failed read piped into `grep` gives empty output
+   that looks exactly like "this page uses no blocks" — check the status and a
+   non-empty body before believing the result, and retry once (a proxying dev
+   server often 502s on the first read of a page). Step 2's variant list is a
+   **union across instances**, so only this step shows which tokens actually
+   compose together.
 
 A real page is **authoritative over any block's CSS read in isolation**: it shows
 which variant combinations and section classes the design system composes
@@ -676,7 +682,14 @@ not here.
    this block (2.0(a)) **are** the regression set. Render each before and after via
    **testing-blocks** and confirm no visual change. **An un-rendered regression set
    is a failed check, not a passed one** — the same fail-closed rule as the rest of
-   this skill.
+   this skill; if you cannot render them all, say so and fail the box rather than
+   silently sampling.
+   **Read its size as a signal, not just a cost.** A generic block on a mature site
+   is easily used on dozens of pages, and every one of them is blast radius. Past a
+   handful, the honest question stops being "can I scope this variant?" and becomes
+   "should this be a new block instead?" — **3B is self-contained and needs no
+   regression proof at all.** A large regression set is the cheapest early warning
+   that you are about to take on shared-code risk to save a hundred lines.
 
 **Fork test.** If the variant's rules mostly *override* the block's styling rather
 than *add* to it, it is a fork wearing a variant's name — the block now has two

@@ -84,21 +84,29 @@ of that response is how an already-authored sibling goes unnoticed.
 
 ## 3. Invoke find-test-content per reuse candidate
 
-**find-test-content** (same plugin) already does block-keyed page discovery:
-it queries the site's query-index, searches each page for a block, and reports
-**every variant class found on that block element**. That variant list is the
-composed token set §4 needs — it is the whole point of running it.
+**Invoke the find-test-content skill** (same plugin) — it already does block-keyed
+page discovery: it queries the site's query-index, searches each page for a block,
+and reports the variant classes found on that block element, with an instance
+count per page. **Invoke the skill and follow its own instructions** rather than
+hardcoding a script path here — where its script lives depends on how the plugin
+is installed, and the path in its docs assumes a `.claude/skills/` layout that a
+plugin install does not create. Pass the read channel from §1 as its host.
 
-```bash
-node .claude/skills/find-test-content/scripts/find-block-content.js <block-name> <host>
-```
+Run it for **each block you are considering reusing**, before deciding that block
+doesn't fit.
 
-Invoke it for **each block you are considering reusing**, before deciding that
-block doesn't fit. What it gives you: which pages use the block, how many
-instances, and the real variant combinations.
+**What it gives you:** which pages use the block, how many instances per page, and
+the set of variant tokens seen on it.
 
 **What it cannot tell you — cover these by reading the page directly (§4):**
 
+- **Which tokens actually compose together.** The variant list is a **union across
+  all instances on that page**, alphabetised — not a per-instance combination. A
+  page reporting `carousel, divider, editorial, icons, icons-sm, minimal` may well
+  be two *separate* blocks (`cards minimal divider` and
+  `cards icons icons-sm editorial carousel`), not one six-token block. The union
+  proves the tokens **exist**; only §4 proves which ones **co-occur** — and the
+  co-occurring set is what the reuse gate must judge (SKILL.md Phase 2.1 rule 2).
 - **Sections that use no block.** It searches *by block name*, so a section
   authored as default content in a styled section is invisible to it. This is
   exactly the case most likely to be over-engineered into a new block (§6, and
@@ -114,16 +122,38 @@ three, not one.
 
 ## 4. Extract the real composition from a page
 
+**Assert the fetch before you trust the extraction.** Piping a failed response into
+`grep` yields **empty output that is indistinguishable from "this page uses no
+blocks"** — and that misreading puts you straight back to building redundant
+blocks, just by a different route than a 401 would. So fetch once, check the
+status, then extract from the saved body:
+
 ```bash
 P=<path-without-extension>
-
-# Every class token the page actually carries — block names, variants,
-# and (on a pipeline-served host) section Style classes:
-curl -s --compressed "$BASE/$P.plain.html" | grep -oE 'class="[a-z][a-z0-9 -]*"' | sort -u
+body=$(mktemp)
+code=$(curl -s -m 15 -o "$body" -w '%{http_code}' "$BASE/$P.plain.html")
+if [ "$code" != "200" ] || [ ! -s "$body" ]; then
+  echo "❌ read failed ($code, $(wc -c <"$body") bytes) — retry, then fall through the §1 ladder."
+  echo "   Do NOT read this as 'no blocks on this page'."
+else
+  # Every class token the page carries — block names, variants, and (on a
+  # pipeline-served host) section Style classes:
+  grep -oE 'class="[a-z][a-z0-9 -]*"' "$body" | sort -u
+fi
 
 # Rendered page: the section wrappers, with their applied Style classes
-curl -s --compressed "$BASE/$P" | grep -oE '<div class="section[^"]*"' | sort -u
+curl -s -m 15 "$BASE/$P" | grep -oE '<div class="section[^"]*"' | sort -u
 ```
+
+Two observed quirks of local dev servers that **proxy** authored content:
+
+- **A cold or busy server can return a transient `502`** even when the path is
+  perfectly valid — the very first read of a page is the most likely to fail.
+  **Retry before drawing any conclusion.**
+- **Probe with `GET` (`-o /dev/null -w '%{http_code}'`), not `HEAD`/`curl -I`.** A
+  proxying dev server can answer `502` to `HEAD` while serving the same URL
+  correctly over `GET`, so a `HEAD` probe can report a page missing that is fully
+  readable.
 
 Read the output as three separate findings:
 
