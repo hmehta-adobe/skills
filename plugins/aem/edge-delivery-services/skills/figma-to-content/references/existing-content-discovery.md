@@ -166,6 +166,15 @@ Read the output as three separate findings:
    rendering that never happens. **The authoritative rendered example of a block
    is that block on this page, with these tokens** — preferable to a generic
    `liveExampleUrl` whenever a real usage exists.
+   Two corollaries, both of which defeat a CSS-only read:
+   - **A token may have no standalone rule at all**, existing only as a compound
+     (`.block.a.b` with no `.block.b`). Enumerating `.block.<token>` selectors
+     therefore under-reports the variant vocabulary — search for the bare token,
+     and treat a real page's composition as proof it is defined (SKILL.md 3A).
+   - **The block's JS may branch on tokens too** — EDS blocks routinely read
+     `classList` to switch behavior (see **building-blocks**' `js-guidelines.md`),
+     so a composition can change decoration, not merely styling. No amount of CSS
+     reading reveals that; the rendered real page does.
 2. **Which sections carry no block** — a section whose only classes are section
    `Style` classes is default content in a styled section. Note it: the
    equivalent section in your design needs no block either.
@@ -257,3 +266,10 @@ Using them the other way — as reassurance that your new-block choice matches t
 design system's conventions — inverts the signal, and converts the strongest
 available hint that you're duplicating existing work into confidence that you
 aren't.
+
+**A block in the palette is not evidence of a convention either.** If §3 reports
+**0 pages** for a block that you did not create in this run, it is dead code —
+often a previous migration's redundant build, sitting next to the composition it
+duplicated. Its presence in `blocks/` says nothing about how the project actually
+authors that section; the pages do. (For a block *you* just created, 0 pages is
+the expected state, so this reads only on pre-existing blocks.)

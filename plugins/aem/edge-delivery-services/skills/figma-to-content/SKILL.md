@@ -560,8 +560,13 @@ the Figma content into that structure:
 
 - **Text** → matching cells; preserve heading levels from the design.
 - **Variants** → extra class tokens on the block (e.g. `cards highlight`).
-  Only apply a variant the block actually defines. **Prefer the exact token set a
-  real page composes** (2.0(a)) over a set you assemble yourself — that
+  Only apply a variant the block actually defines — but **"defines" is not the same
+  as "has a standalone rule."** A token may exist *only* as a compound
+  (`.block.a.b { … }` with no `.block.b` anywhere), so enumerating `.block.<token>`
+  selectors under-reports the vocabulary and will wrongly reject a composition the
+  project actually ships. Search the block's CSS for the bare token, and treat a
+  real page's composition (2.0(a)) as proof the token is defined. **Prefer the exact
+  token set a real page composes** over a set you assemble yourself — that
   combination is known to render, and its ordering may matter. (Defining a *new*
   variant is **3D** — it is code, and it needs the user's confirmation.)
 - **Links/buttons** → a **standalone link** (the only content of its

@@ -21,7 +21,11 @@ from the raw child order:
    heading group + a button row are *one* section, not three).
 4. **Reconcile the count against the screenshot** before resolving: the eye sees
    the real sections; a mismatch means you over- or under-split — fix it before
-   Phase 2.
+   Phase 2. **On a very tall frame, one full-frame image can't do this.** A long
+   landing page is routinely 8–10× its width, and a single render of that aspect
+   ratio is too small to read — reconcile against a handful of per-band crops
+   instead, and don't treat the unusable full-frame shot as the anchor Phase 1
+   asks for.
 
 Why it matters: a full-bleed background rectangle emitted as its own "section"
 produces an empty section in the output and throws off the section count the Phase
