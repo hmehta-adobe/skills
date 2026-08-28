@@ -310,6 +310,17 @@ the 2.1 / Phase 3A visual check; when a real page from (a) uses the block,
 Together these are the reuse-candidate set — essential when the customer is
 already on EDS with their own blocks.
 
+**(c) On a multi-page run, resolve the vocabulary once — not once per page.** A
+templated site builds many pages from a handful of components: seven pages can be
+~100 bands drawn from ~10 distinct components, one of which accounts for a third of
+them. Resolve each **component** once, record the decision, and apply it to every
+page that instances it. Re-deriving per page is not merely wasted effort — it lets
+the same component resolve **differently** on different pages, which ships two
+blocks for one design element and defeats the palette entirely. Where two pages
+genuinely disagree, that is evidence the component has two roles, not licence to
+build twice. Carry the vocabulary into the 2.2 plan as its own table so the user
+confirms ten decisions rather than a hundred rows.
+
 *Conditional:* on a fresh or empty site (a) returns nothing and building is
 correct. State that discovery ran and found nothing, so the plan distinguishes it
 from discovery never running.
@@ -358,7 +369,16 @@ mapping — do not dump it as unresolved:
      the block's own styling rather than add to them (that's a fork wearing a
      variant's name).
    - **Nothing in the palette fits at all → new block** (3B).
-   - **A section carrying an interactive control** — tabs / segmented switch,
+   - **First ask what the control actually *does*.** A tab strip or segmented
+     switch whose items are **links to sibling pages** is site navigation, not an
+     interactive component: it needs no JS and no block — a link list (default
+     content) or a shared **fragment**, which is also how it stays consistent
+     across the pages it links. Tell them apart by the targets: **same-page panels
+     that show and hide ⇒ a control; separate URLs with the current one marked ⇒
+     navigation.** Templated section-nav like this is standard on product, docs and
+     multi-page campaign sites, so check the targets before reaching for a block —
+     the component's *name* will say "tabs" either way.
+   - **A section carrying a genuine interactive control** — tabs / segmented switch,
      accordion, carousel or slider, toggle — is structural divergence no static
      block reproduces: route it to a **new block** (3B), or, if the control is
      non-essential chrome, **confirm with the user** whether to keep it or
@@ -419,6 +439,15 @@ auditable.
   hard to reverse. Skip this pause only if the user pre-authorized an
   unattended run. A **fully annotated** plan needs no pause — the annotations
   are the authorization.
+- **If discovery found this design already authored, stop and ask.** 2.0(a) can turn
+  up a page that is not merely *similar* to the frame but **is** it — same section
+  order, same headings, at a **different path** from your target. The honest question
+  then is not "which blocks?" but *"what do you actually want?"*: re-author it at a
+  new path (duplicating content the site already serves), overwrite the existing page
+  with a re-derivation of itself, or nothing at all. Never pick one silently. A
+  migration whose output already exists is the one case where the correct answer may
+  be **"there is no work to do"** — and reporting that is a success, not a failure to
+  deliver.
 - **Flag an existing target page — and read the listing for everything it says.**
   Before confirming, check whether the target `content/<PATH>.html` already exists
   in DA (a cheap Source-API `GET`, Phase 5). **List the parent path, not just the

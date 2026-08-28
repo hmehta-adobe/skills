@@ -52,6 +52,13 @@ from the raw child order:
    page section — a bare heading, a lone button — attaches to its nearest
    substantial neighbour. Merge siblings whose vertical extents overlap on the same
    basis (a background rect + a heading group + a button row are *one* section).
+
+   **Never attach a satellite to chrome.** Short bands immediately above the footer
+   — a trademark line, a legal disclaimer, a job code or revision date — are
+   standalone default content, not satellites of the footer. Satellites attach to
+   **content**; when the nearest substantial neighbour is chrome (§3), the band
+   stands alone. Templated sites put two or three such lines above the footer on
+   every page, so this is the common case, not an exotic one.
 6. **Reconcile the count against the screenshot** before resolving: the eye sees
    the real sections; a mismatch means you over- or under-split — fix it before
    Phase 2. **On a very tall frame, one full-frame image can't do this.** A long

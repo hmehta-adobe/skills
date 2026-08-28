@@ -76,9 +76,18 @@ icons). The sequence:
 ```bash
 git add blocks/<new-block> icons/<name>.svg   # never `git add .` / `git add -A`
 git status --short          # confirm NOTHING else is staged
-git commit -m "feat: <new-block> block" && git push origin "$BRANCH"
-git show --stat HEAD        # the file list you just published — verify it
+git commit -m "feat: <new-block> block"
+git show --stat HEAD        # ← inspect the file list BEFORE it leaves the machine
+git push origin "$BRANCH"
 ```
+
+**Check the file list before pushing, not after.** If a commit turns out to be
+over-broad and it has **not** been pushed, `git commit --amend` (or
+`git rm --cached <file>` then amend) removes it cleanly. Once pushed, the only
+options are live-with-it or rewriting the history of a shared branch — and a
+follow-up "drop those files" commit **does not** remove them: they remain
+retrievable at the earlier ref, and were served for the whole window in between.
+That window is the cost of checking after the push instead of before.
 
 Open a PR instead if the project protects `$BRANCH`; the branch that renders the
 page must contain the block code. For a **3D variant**, the same discipline applies
