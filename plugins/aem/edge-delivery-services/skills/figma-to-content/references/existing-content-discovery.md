@@ -42,13 +42,24 @@ for base in "http://localhost:3000" \
   echo "  $base -> $code"
   [ "$code" = "200" ] && { READ_CHANNEL="$base"; break; }
 done
+# Rung 3 - the DA Source API. Different URL shape, and it needs $DA_TOKEN, so it
+# cannot go in the loop above. Do NOT stop at rung 2.
+if [ -z "$READ_CHANNEL" ] && [ -n "$DA_TOKEN" ]; then
+  code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' \
+    -H "Authorization: Bearer $DA_TOKEN" \
+    "https://admin.da.live/source/$DA_ORG/$DA_REPO/index.html")
+  echo "  admin.da.live/source (DA API) -> $code"
+  case "$code" in
+    200) READ_CHANNEL="da-source" ;;   # read via admin.da.live/source/... from here on
+    401) echo "  DA token expired (401) - re-auth via da-auth; NOT proof the site is empty" ;;
+  esac
+fi
 [ -n "$READ_CHANNEL" ] && echo "read channel: $READ_CHANNEL" \
-  || echo "no unauthenticated channel answered - try the DA Source API before concluding the site is empty"
+  || echo "no channel answered - say so explicitly in the plan; do NOT proceed as if the site were empty"
 ```
 
 Probe with **`GET`** (`-o /dev/null -w '%{http_code}'`), not `HEAD`/`curl -I` — see the
-dev-server quirks in §4. Rung 3 (DA Source API) takes a different URL shape and
-`$DA_TOKEN`; add it to the ladder rather than stopping at rung 2.
+dev-server quirks in §4.
 
 **A `401`/`403` on one host is an auth fact about that host — never proof the
 content does not exist.** Fall through to the next channel. Concluding "existing
@@ -64,10 +75,19 @@ downstream discovery step get skipped. (SKILL.md draws this same line for Figma
 ```bash
 # a) the published set
 # Parse it - never `head -c` a JSON document, which truncates mid-token and leaves
-# invalid JSON no parser will read:
-curl -s -m 20 "$BASE/query-index.json" > /tmp/qi.json
-python3 -c "import json;d=json.load(open('/tmp/qi.json'));r=d.get('data',d);print(len(r),'pages');[print('  ',x.get('path'),'|',(x.get('title') or '')[:48]) for x in r[:25]]"
-curl -s "$BASE/sitemap.xml" | grep -oE '<loc>[^<]+'  # fallback
+# invalid JSON no parser will read. Use mktemp (a fixed /tmp name races other runs)
+# and assert the status, or json.load chokes on an HTML error page:
+qi=$(mktemp); trap 'rm -f "$qi"' EXIT
+qcode=$(curl -s -m 20 -o "$qi" -w '%{http_code}' "$BASE/query-index.json")
+if [ "$qcode" = "200" ] && [ -s "$qi" ]; then
+  python3 -c "import json,sys
+d=json.load(open(sys.argv[1])); r=d.get('data',d)
+print(len(r),'pages')
+[print('  ',x.get('path'),'|',(x.get('title') or '')[:48]) for x in r[:25]]" "$qi"
+else
+  echo "no query-index ($qcode) - fall back to sitemap.xml or the DA listing below"
+  curl -s -m 20 "$BASE/sitemap.xml" | grep -oE '<loc>[^<]+'
+fi
 
 # b) the authored source tree (DA) — also lists unpublished pages
 curl -s -H "Authorization: Bearer $DA_TOKEN" \
@@ -142,7 +162,7 @@ status, then extract from the saved body:
 
 ```bash
 P=<path-without-extension>
-body=$(mktemp)
+body=$(mktemp); trap 'rm -f "$body" "$rend"' EXIT
 code=""
 for attempt in 1 2 3; do                       # the retry the prose below calls for
   code=$(curl -s -m 15 -o "$body" -w '%{http_code}' "$BASE/$P.plain.html")

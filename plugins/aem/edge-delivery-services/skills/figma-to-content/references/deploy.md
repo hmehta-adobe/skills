@@ -113,8 +113,8 @@ for i in $(seq 1 24); do
   [ "$i" = "24" ] && { echo "❌ block JS not live after ~2min — check push/branch/Code Sync"; exit 1; }
   sleep 5
 done
-csscode=$(curl -s -o /dev/null -w '%{http_code}' --compressed "$BH/blocks/<new-block>/<new-block>.css")
-[ "$csscode" = "200" ] || echo "⚠ block CSS not live ($csscode) — block will render unstyled"
+csscode=$(curl -s -o /dev/null -m 15 -w '%{http_code}' --compressed "$BH/blocks/<new-block>/<new-block>.css")
+[ "$csscode" = "200" ] || { echo "❌ block CSS not live ($csscode) — block renders unstyled; the Stage A gate box requires JS *and* CSS at 200, so failing here is the same verdict, reached sooner"; exit 1; }
 ```
 
 ---
@@ -202,14 +202,21 @@ all: fail the box instead.
 
 ```bash
 BASE="https://$BRANCH_HOST--$GH_REPO--$GH_OWNER.aem.page/$P.plain.html"
-frag=$(mktemp)
+frag=$(mktemp); trap 'rm -f "$frag" "$page"' EXIT
 code=$(curl -s --compressed -m 20 -o "$frag" -w '%{http_code}' "$BASE")
 [ "$code" = "200" ] && [ -s "$frag" ] || {
   echo "❌ Stage A fetch failed ($code, $(wc -c <"$frag") bytes) — gate boxes FAIL; do not read as 'clean'"; exit 1; }
+# A 200 with a NON-EMPTY body is still not proof you got the page: an auth wall or
+# maintenance page is 200 and non-empty, and every grep below then reports a clean
+# result for content you never fetched. Require a positive marker.
+grep -q 'class="[a-z]' "$frag" || {
+  echo "❌ fetched 200 but body carries no authored classes — likely an auth/error page; gate boxes FAIL"; exit 1; }
 
 grep -c about:error "$frag"                              # expect 0 (no broken images)
 grep -o '<img' "$frag" | wc -l                           # expect = authored image count
-grep -o 'class="[a-z][a-z-]*"' "$frag" | sort -u         # every authored block class present
+# digits are legal in EDS block names (just not first), so the token class must
+# include 0-9 — matching the pattern used in existing-content-discovery.md §4:
+grep -oE 'class="[a-z][a-z0-9 -]*"' "$frag" | sort -u    # every authored block class present
 ```
 
 **Section count.** Count top-level sections, not every `<div>` (blocks and rows are
