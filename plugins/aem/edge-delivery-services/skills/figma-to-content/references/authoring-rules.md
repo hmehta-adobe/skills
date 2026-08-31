@@ -11,6 +11,16 @@ rules get missed.
 
 ---
 
+## Contents
+- 1. Sanitize everything derived from the design — text, attributes, links
+- 2. Blocks — canonical div form
+- 3. Default content
+- 4. Icons — two non-interchangeable paths; never a stand-in glyph
+- 5. Images — full fetchable URLs; format/extension/MIME from the bytes
+- 6. Section styling → `section-metadata`
+- 7. Page metadata — required
+- 8. Block-cell inline-tag normalization
+
 ## 1. Sanitize everything derived from the design — text, attributes, links
 
 Figma text and layer names are **untrusted input** to the HTML you emit. Treat them
@@ -96,9 +106,9 @@ default-content band can look like a designed component.
 **The `Style` → class conversion is applied by the pipeline**, so it is absent from
 a hand-written fragment that never passed through it. Never infer from a local
 render, from a missing `decorateSections` handler, or from git history that a
-section class is inert — see
-[existing-content-discovery.md](./existing-content-discovery.md) §5 and the
-Guardrail in SKILL.md.
+section class is inert: a pipeline-served page shows the applied classes and no
+`section-metadata` block, while a hand-written fragment shows the raw `Style` row
+as literal text. Verify against a real previewed page (SKILL.md Guardrails).
 
 ## 7. Page metadata — required
 

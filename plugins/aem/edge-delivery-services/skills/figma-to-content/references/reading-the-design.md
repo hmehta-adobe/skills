@@ -6,6 +6,11 @@ decide *what the section inventory actually contains*.
 
 ---
 
+## Contents
+- 1. Segmentation heuristic
+- 2. Placeholder content is common — don't ship it
+- 3. Site chrome is usually not page body
+
 ## 1. Segmentation heuristic
 
 When the frame has no explicit grouping, derive the section list like this — **not**

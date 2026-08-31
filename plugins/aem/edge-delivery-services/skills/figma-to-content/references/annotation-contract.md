@@ -21,6 +21,15 @@ round-trip — prefer it for reliability and unattended automation.
 
 ---
 
+## Contents
+- 1. What should be annotated
+- 2. Where annotations live (read in this priority order)
+- 3. Annotation format
+- 4. Field mapping rules
+- 5. Resolution rules (enforced by the skill)
+- 6. Worked example
+- 7. Open items for adopters
+
 ## 1. What should be annotated
 
 For **each logical section** of the page frame, a section annotation is

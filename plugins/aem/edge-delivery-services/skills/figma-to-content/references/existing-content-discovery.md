@@ -19,6 +19,16 @@ option.
 
 ---
 
+## Contents
+- 1. Read channels — try them in order, stop at the first `200`
+- 2. Enumerate the pages, then prioritize the same family
+- 3. Invoke find-test-content per reuse candidate
+- 4. Extract the real composition from a page
+- 5. Section `Style` classes are applied by the pipeline
+- 6. Worked example
+- 7. When there is genuinely nothing to find
+- 8. Fingerprints are leads, not confirmation
+
 ## 1. Read channels — try them in order, stop at the first `200`
 
 Existing content is reachable by several routes with different auth. Establish

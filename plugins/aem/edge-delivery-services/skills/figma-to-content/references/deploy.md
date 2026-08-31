@@ -9,6 +9,15 @@ success.**
 
 ---
 
+## Contents
+- 1. Identities, refs, and the checked-request helper
+- 2. content+code path only — block code must be live before the page renders
+- 3. Both paths — media, overwrite guard, write, preview
+- 4. Stage A verification commands (server-side, no browser)
+- 5. Non-obvious rules (da-content / EDS)
+- 6. Many pages
+- 7. Publish to the live host — final, gated
+
 ## 1. Identities, refs, and the checked-request helper
 
 ```bash
@@ -124,9 +133,8 @@ csscode=$(curl -s -o /dev/null -m 15 -w '%{http_code}' --compressed "$BH/blocks/
 **1) Upload referenced media FIRST** — every authored `<img>` must resolve at
 **preview** time. Field name MUST be `data`. Detect the format from the **bytes**
 and keep the `type=` MIME, the `<media-path>` extension, and the authored
-`content.da.live` URL extension in agreement (see
-[authoring-rules.md](./authoring-rules.md) §5) — the filename suffix is not
-authoritative. Skip images that use a stable external URL the preview can sideload.
+`content.da.live` URL extension in agreement — detect the format from the image's
+magic bytes, since the filename suffix is not authoritative (SKILL.md Phase 4). Skip images that use a stable external URL the preview can sideload.
 
 ```bash
 req 200,201 -X PUT -H "Authorization: Bearer $TOKEN" \
