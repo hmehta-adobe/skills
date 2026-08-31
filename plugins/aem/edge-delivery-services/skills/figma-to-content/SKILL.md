@@ -147,13 +147,22 @@ guess or a partial capability.
    out locally (needed to see `blocks/` and to add new-block code) and the skills
    this one orchestrates (**da-auth**, **da-content**, the block skills) are
    available. If the checkout path is unknown, ask for it.
-5. **A read channel for the project's EXISTING content.** Phase 2.0 must read
-   already-authored pages, so establish *now* which host answers and record it as
-   the run's read channel. Try in order, stop at the first `200`: the **local dev
-   server** (`http://<dev-host>/<path>.plain.html` — it *proxies authored
-   content*, so it serves the customer's pages, not just your local files; the
-   port is per project, confirm it), then the **preview/live host**, then the **DA
-   Source API** with `$DA_TOKEN`. **Fall through on a `401`/`403`** — see the
+5. **A read channel for the project's EXISTING content — and proof it belongs to
+   THIS project.** Phase 2.0 must read already-authored pages, so establish *now*
+   which host answers and record it as the run's read channel. Try in order, stop at
+   the first `200`: the **local dev server** (`http://<dev-host>/<path>.plain.html` —
+   it *proxies authored content*, so it serves the customer's pages, not just your
+   local files; the port is per project, confirm it), then the **preview/live host**,
+   then the **DA Source API** with `$DA_TOKEN`.
+   **A dev server on the default port may belong to a different project.** Any
+   developer machine can have several EDS checkouts, and port `3000` belongs to
+   whichever started first — so a `200` there proves a server is running, never that
+   it is *this* site. Reading another project's pages is worse than reading none:
+   you resolve every section against a stranger's content and report high
+   confidence. **Prove provenance before trusting the channel** — fetch a code path
+   that exists only in this checkout (`<channel>/blocks/<a-block-in-this-repo>/…css`)
+   and confirm `200`, or check a page path this project should have and another
+   should not. On a mismatch, drop that rung and move to the preview host. **Fall through on a `401`/`403`** — see the
    failure-signal guardrail. Only if *every* channel fails is existing content
    genuinely unreadable — say so explicitly in the plan rather than silently
    proceeding as if the site were empty. See

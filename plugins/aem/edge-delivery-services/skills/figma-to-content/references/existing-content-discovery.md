@@ -37,7 +37,7 @@ read channel, so discovery is never blocked mid-run by a guess about reachabilit
 
 | Order | Channel | Notes |
 |---|---|---|
-| 1 | **Local dev server** — `http://<dev-host>/<path>.plain.html` | The `aem up` dev server **proxies authored content** from the configured origin, so it serves *their* pages, not just your local files. Usually already running for your own render. Cheapest and typically unauthenticated. Port is per project (`aem up` default is `3000`, but projects reassign it) — confirm the actual port, don't assume. |
+| 1 | **Local dev server** — `http://<dev-host>/<path>.plain.html` | The `aem up` dev server **proxies authored content** from the configured origin, so it serves *their* pages, not just your local files. Usually already running for your own render. Cheapest and typically unauthenticated. Port is per project (`aem up` default is `3000`, but projects reassign it) — confirm the actual port, don't assume, and **prove the server belongs to this project** (see below). |
 | 2 | **Preview / live host** — `https://<branch-host>--<repo>--<owner>.aem.page/<path>.plain.html` (or `.aem.live`) | May require auth on access-protected sites. |
 | 3 | **DA Source API** — `GET https://admin.da.live/source/{daOrg}/{daRepo}/<path>.html` with `$DA_TOKEN` | The authored source, pre-pipeline (see §5 for what that means). Also the route for **listing** (§2). |
 
@@ -70,6 +70,22 @@ fi
 
 Probe with **`GET`** (`-o /dev/null -w '%{http_code}'`), not `HEAD`/`curl -I`: a
 proxying dev server can `502` on `HEAD` while serving the same URL fine over `GET`.
+
+**Then prove the channel is this project's.** A `200` on rung 1 proves only that
+*some* dev server is running; on a machine with several EDS checkouts, the default
+port belongs to whichever started first. Fetch a path that only this checkout
+serves and require `200`:
+
+```bash
+# a block that exists in THIS repo's blocks/ — the dev server serves repo code too
+curl -s -o /dev/null -m 10 -w '%{http_code}' "$READ_CHANNEL/blocks/<block-in-this-repo>/<block-in-this-repo>.css"
+```
+
+If that 404s while pages 200, the server is serving a **different project**: drop
+the rung and move to the preview host. Skipping this is worse than finding no
+channel at all — you resolve every section against another site's compositions and
+report high confidence, with nothing in the output showing the content came from
+the wrong place.
 
 **A `401`/`403` on one host is an auth fact about that host — never proof the
 content does not exist.** Fall through to the next channel. Concluding "existing
