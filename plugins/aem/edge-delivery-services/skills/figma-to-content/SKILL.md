@@ -361,6 +361,16 @@ mapping — do not dump it as unresolved:
    author as default content. Route to a block only for genuine repeating or
    structured component content the section classes cannot express. Building a
    block here reimplements existing section classes.
+   **A block whose NAME matches the section's purpose is the trap, not the
+   answer.** A palette holding `cta-band`, `sign-off`, `accolades` or similar makes
+   name-matching feel like reuse, and it is the single most common way this rule
+   gets skipped: the name is so obviously apt that the question "does this need a
+   block at all?" never gets asked. But a block's name only records that *someone
+   once* thought a block was needed — it is not evidence the design system uses it
+   for this pattern, and it may be an earlier migration's redundant build. **A name
+   match is precisely when to go read how a real page authors the same band**, and
+   to prefer the page's answer over the name's. If the page authors it as default
+   content in a styled section, so do you — however well the block is named.
 2. Otherwise match it against the 2.0 palette using the **reuse gate (structure
    AND visual, Phase 3A)**: does its content model fit an existing block *and*
    does that block's rendered example — under the project theme — look like the
