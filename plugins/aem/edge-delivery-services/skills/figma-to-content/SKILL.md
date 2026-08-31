@@ -153,11 +153,10 @@ guess or a partial capability.
    server** (`http://<dev-host>/<path>.plain.html` — it *proxies authored
    content*, so it serves the customer's pages, not just your local files; the
    port is per project, confirm it), then the **preview/live host**, then the **DA
-   Source API** with `$DA_TOKEN`. **A `401`/`403` from one host is an auth fact
-   about that host — never proof the content doesn't exist: fall through to the
-   next channel** (the same distinction steps 2 and 3 draw). Only if *every*
-   channel fails is existing content genuinely unreadable — say so explicitly in
-   the plan rather than silently proceeding as if the site were empty. See
+   Source API** with `$DA_TOKEN`. **Fall through on a `401`/`403`** — see the
+   failure-signal guardrail. Only if *every* channel fails is existing content
+   genuinely unreadable — say so explicitly in the plan rather than silently
+   proceeding as if the site were empty. See
    [references/existing-content-discovery.md](./references/existing-content-discovery.md) §1.
 
 On all-pass, print a one-line preflight summary — Figma identity, the file/frame,
@@ -218,9 +217,9 @@ spend them deliberately rather than re-fetching:**
    assets the **confirmed** plan references, after Phase 2. Don't pull binaries
    for sections that end up reusing an existing block or being cut.
 
-A `429`/rate-limit or a truncated/garbled response is a **budget/cap signal, not
-"no data"**: back off, narrow the scope (frame → section), and retry — never read
-it as an empty design or as missing access (Phase 0 step 2 draws the same line).
+A `429`/rate-limit or a truncated/garbled response is a **budget/cap signal**:
+back off, narrow the scope (frame → section), and retry — see the failure-signal
+guardrail.
 
 Produce an ordered **section inventory**: `{ sectionNodeId, annotation,
 screenshot, content, background }` — capture each section's **background /
@@ -253,9 +252,8 @@ Every section resolves to exactly one of: **existing block as-is** (→ 3A),
 **default content** (→ 3C), **existing block + a new additive variant** (→ 3D),
 or **new block** (→ 3B). **Prefer the cheapest option that honestly fits** — no
 code (3A / 3C), then a variant on a block that already exists (3D), then new
-block code (3B). A design that resolves to four new blocks on a mature site is
-usually a discovery or laddering failure, not four novel components. How the
-decision is reached depends on whether the section is annotated.
+block code (3B) — the *why* is in Guardrails. How the decision is reached depends
+on whether the section is annotated.
 
 ### 2.0 — Survey what already exists: pages first, then blocks (always)
 
@@ -574,13 +572,11 @@ only its primary element: one that (say) whitens a heading over dark media but
 leaves the supporting text and buttons at body color passes a structural check
 yet renders that text illegibly — a divergence the token retheme cannot fix.
 Divergence beyond what the token retheme explains ⇒ **not reuse**: take it to
-**3D** (an additive variant) when the gap is expressible as rules scoped under one
-new token, else **3B** (a new block). This outcome is **blocking**: the section is
-not resolved until its rendered look — that text included — is faithful, and the
-fix is a scoped variant or a new isolated block, **never an edit to the shared
-block's existing rules**. Recording the gap in
-the plan and reusing the block anyway is a **plan note, not a fix** — the Phase 5
-pre-publish gate treats such a box as failed.
+**3D** when the gap is expressible as rules scoped under one new token, else **3B**
+(additive-only either way — see Guardrails). This outcome is **blocking**: the
+section is not resolved until its rendered look — that text included — is
+faithful. Recording the gap in the plan and reusing the block anyway is a **plan
+note, not a fix** — the Phase 5 pre-publish gate treats such a box as failed.
 
 Once the gate passes, **invoke block-collection-and-party** to learn the block's
 authoring model (its examples show the row/cell structure and variants) — read
@@ -713,8 +709,11 @@ not here.
    variant needing a different content model would break every page already using
    the block: 3B.
 4. **The regression set renders unchanged.** The pages find-test-content listed for
-   this block (2.0(a)) **are** the regression set. Render each before and after via
-   **testing-blocks** and confirm no visual change. **An un-rendered regression set
+   this block (2.0(a)) **are** the regression set — **published pages only**, since
+   that list comes from `query-index.json`, so check the DA source listing
+   ([existing-content-discovery.md](./references/existing-content-discovery.md) §2b)
+   for unpublished siblings the proof would otherwise miss. Render each before and
+   after via **testing-blocks** and confirm no visual change. **An un-rendered regression set
    is a failed check, not a passed one** — the same fail-closed rule as the rest of
    this skill; if you cannot render them all, say so and fail the box rather than
    silently sampling.
@@ -1031,12 +1030,15 @@ Command: [references/deploy.md](./references/deploy.md) §7.
   produces new blocks that duplicate authoring the site already has, and a
   confirmation whose option set is missing the right answer (Phase 2.0(a), 2.2
   precondition).
-- **A failure response is not an absence of content.** A `401`/`403` from one
-  read host is an auth fact about that host; fall through the channel ladder
-  (Phase 0 step 5) before concluding existing content is unreachable — and if
-  every channel truly fails, say so in the plan instead of proceeding as if the
-  site were empty. Design-system **fingerprints** naming a page type are leads to
-  go read that page, never confirmation that building new is right.
+- **A failure signal is never an absence signal.** This applies at *every* read in
+  this skill — Figma calls, each rung of the content-read ladder, the DA existence
+  check, and both verify stages. A non-answer, a truncated one, and an empty one
+  are facts about the **channel**, never about the **content**: fall through,
+  narrow, or retry, and if every route fails say so in the plan rather than
+  proceeding as if the site were empty. Each phase names its own remedy; the rule
+  behind all of them is this one. Relatedly, design-system **fingerprints** naming
+  a page type are leads to go read that page, never confirmation that building new
+  is right.
 - **A container treatment is section styling, not a block.** Heading + prose +
   buttons inside a colored, rounded, centered, or width-constrained panel is
   default content in a styled section (`section-metadata` `Style`), not a
@@ -1088,13 +1090,10 @@ Command: [references/deploy.md](./references/deploy.md) §7.
   site is a discovery or laddering failure, not four novel components:
   near-duplicate blocks multiply the authoring models an author must learn, the CSS
   someone must maintain, and the ambiguity the next migration has to resolve.
-- **Reuse needs structural *and* visual fit** — a matching authoring model is
-  not enough; if the block's existing rendered look (after the token retheme)
-  doesn't match the design using only its defined variants — including how it
-  treats secondary text and CTAs over any background or media — it's an additive
-  variant (3D) or a new block (3B), never reuse-and-note-the-gap (Phase 3A reuse
-  gate), judged as the **composed token set the project actually ships** — not one
-  variant in isolation (2.1 rule 2).
+- **Reuse needs structural *and* visual fit** — a matching authoring model is not
+  enough, and the look is judged on the composed token set the project ships, not
+  one variant in isolation. The gate, its failure modes and its verdicts live in
+  **Phase 3A**; the composition rule in **2.1 rule 2**.
 - **Infer, then confirm — never silently guess.** For an unannotated section
   you may *infer* the mapping (Phase 2.1). High-confidence sections build
   without blocking, but you must **ask before building** any low-confidence or
