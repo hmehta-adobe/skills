@@ -16,32 +16,20 @@ decide *what the section inventory actually contains*.
 When the frame has no explicit grouping, derive the section list like this — **not**
 from the raw child order:
 
-1. **Drop hidden nodes first, before sorting.** A node marked hidden
-   (`hidden="true"` / `visible: false`) is **not part of the page** — it is a design
-   alternative, a work-in-progress variant, or a deprecated band the designer
-   toggled off. Authoring one produces a section the design does not have.
-   This filter must come **first**, because hidden variants are routinely stacked at
-   the *same* `y` as each other and as the visible band they replace: a file can
-   carry three hidden copies of one component all at `y=2434`, overlapping a
-   different visible section entirely. Sort or merge before filtering and the
-   proximity rules in step 5 produce nonsense. Recurse — a visible band can contain
-   hidden children (a hidden subhead or CTA inside a visible hero), and those are
-   equally absent from the page.
-   *Corollary:* hidden placeholder text is **not** a placeholder to flag (§2) — it
-   is simply not content. Only flag placeholder that is actually visible.
-2. Sort the surviving children by `y` (top to bottom).
-3. **Descend into wrapper frames before classifying.** A top-level child is not
+1. Sort the frame's direct children by `y` (top to bottom), skipping hidden nodes
+   (`hidden="true"`) at every depth — they are design alternates, not page content.
+2. **Descend into wrapper frames before classifying.** A top-level child is not
    necessarily one band: designers often wrap several bands in a single frame
    (commonly named `Landing page`, `Frame 123`, `Content`), and that wrapper may
    mix **chrome with content** — a nav bar sitting alongside the hero and a logo
    strip. Never classify or drop a whole wrapper on its own name; if a child
    contains multiple full-width bands, treat *its* children as the candidates. A
    frame that spans nearly the whole page height is a wrapper, not a section.
-4. **Drop pure-decoration layers** from the section list — full-bleed background
+3. **Drop pure-decoration layers** from the section list — full-bleed background
    rectangles, gradients, blurs, absolutely-positioned shapes with no text or
    interactive child. Record each as the *background* of the content it sits behind
    (→ Phase 4 `section-metadata`); don't emit it as a section of its own.
-5. **Attach short satellite bands to the band they serve — don't threshold on the
+4. **Attach short satellite bands to the band they serve — don't threshold on the
    gap.** Two very common conventions break a distance rule:
    - **A section heading kept in its own layer group.** A short text-only band
      (a heading, or heading + standfirst) immediately above a much taller content
@@ -64,7 +52,7 @@ from the raw child order:
    **content**; when the nearest substantial neighbour is chrome (§3), the band
    stands alone. Templated sites put two or three such lines above the footer on
    every page, so this is the common case, not an exotic one.
-6. **Reconcile the count against the screenshot** before resolving: the eye sees
+5. **Reconcile the count against the screenshot** before resolving: the eye sees
    the real sections; a mismatch means you over- or under-split — fix it before
    Phase 2. **On a very tall frame, one full-frame image can't do this.** A long
    landing page is routinely 8–10× its width, and a single render of that aspect
