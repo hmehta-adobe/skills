@@ -264,11 +264,17 @@ order. Mechanics, commands, and a worked example:
 **(a) Existing pages — the ground truth.** If the site has any content, find
 pages **before** surveying blocks. On the Phase 0 read channel:
 
-1. **Enumerate** the pages — `query-index.json`, `sitemap.xml`, or the DA source
-   listing — and prioritize a page in the **same family** as the target: the
-   target path itself first (if it exists it may already solve every section),
-   then path-prefix siblings (the parent directory listing), then same
-   `template`/`theme`, then any page whose design shares sections with the frame.
+1. **Fetch the page list before reading any page. Do not guess page paths.**
+   `GET <read-channel>/query-index.json` (falling back to `sitemap.xml`, then the DA
+   source listing) and work from the paths it returns. **Guessing is the failure
+   mode here:** plausible guesses — `/index`, the parent path, the target path —
+   find the *obvious* page and miss the *informative* one, and a thin parent page
+   will happily supply a wrong answer with no sign anything was missed. If you have
+   not fetched a listing, you have not enumerated.
+   Then prioritize a page in the **same family** as the target: the target path
+   itself first (if it exists it may already solve every section), then
+   path-prefix siblings **from the listing**, then same `template`/`theme`, then any
+   page whose design shares sections with the frame.
 2. **Invoke find-test-content for every block you might reuse** — it queries the
    query-index, finds the pages using that block, and reports **the real variant
    combinations** on it. Do this *before* concluding a block doesn't fit.
