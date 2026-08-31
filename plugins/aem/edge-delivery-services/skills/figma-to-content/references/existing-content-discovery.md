@@ -68,8 +68,8 @@ fi
   || echo "no channel answered - say so explicitly in the plan; do NOT proceed as if the site were empty"
 ```
 
-Probe with **`GET`** (`-o /dev/null -w '%{http_code}'`), not `HEAD`/`curl -I` — see the
-dev-server quirks in §4.
+Probe with **`GET`** (`-o /dev/null -w '%{http_code}'`), not `HEAD`/`curl -I`: a
+proxying dev server can `502` on `HEAD` while serving the same URL fine over `GET`.
 
 **A `401`/`403` on one host is an auth fact about that host — never proof the
 content does not exist.** Fall through to the next channel. Concluding "existing
@@ -201,10 +201,6 @@ Two observed quirks of local dev servers that **proxy** authored content:
 - **A cold or busy server can return a transient `502`** even when the path is
   perfectly valid — the very first read of a page is the most likely to fail.
   **Retry before drawing any conclusion.**
-- **Probe with `GET` (`-o /dev/null -w '%{http_code}'`), not `HEAD`/`curl -I`.** A
-  proxying dev server can answer `502` to `HEAD` while serving the same URL
-  correctly over `GET`, so a `HEAD` probe can report a page missing that is fully
-  readable.
 
 Read the output as three separate findings:
 
@@ -317,10 +313,3 @@ Using them the other way — as reassurance that your new-block choice matches t
 design system's conventions — inverts the signal, and converts the strongest
 available hint that you're duplicating existing work into confidence that you
 aren't.
-
-**A block in the palette is not evidence of a convention either.** If §3 reports
-**0 pages** for a block that you did not create in this run, it is dead code —
-often a previous migration's redundant build, sitting next to the composition it
-duplicated. Its presence in `blocks/` says nothing about how the project actually
-authors that section; the pages do. (For a block *you* just created, 0 pages is
-the expected state, so this reads only on pre-existing blocks.)
