@@ -82,14 +82,29 @@ unrelated project's dev server. Compare **identities** using the DA listing, whi
 scoped to this `daOrg`/`daRepo` by construction:
 
 ```bash
-# 1. ask DA which pages THIS project actually has
-curl -s -m 20 -H "Authorization: Bearer $DA_TOKEN" \
-  "https://admin.da.live/list/$DA_ORG/$DA_REPO/" > /tmp/da-list.json
-KNOWN=$(python3 -c "import json;d=json.load(open('/tmp/da-list.json'));
-print(next(i['name'] for i in d if i.get('ext')=='html'))")
-# 2. the candidate channel must serve that same page
-code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$READ_CHANNEL/$KNOWN.plain.html")
-[ "$code" = "200" ] || echo "channel does not serve $KNOWN — it is a DIFFERENT project; drop this rung"
+# 1. ask DA which pages THIS project actually has. mktemp, not a fixed /tmp name
+#    (concurrent runs would clobber each other), and assert the status before
+#    parsing — a 401 or 5xx writes error HTML, not JSON.
+dal=$(mktemp); trap 'rm -f "$dal"' EXIT
+dcode=$(curl -s -m 20 -o "$dal" -w '%{http_code}' \
+  -H "Authorization: Bearer $DA_TOKEN" "https://admin.da.live/list/$DA_ORG/$DA_REPO/")
+if [ "$dcode" != "200" ] || [ ! -s "$dal" ]; then
+  echo "DA listing unavailable ($dcode) — cannot prove provenance this way; do NOT trust rung 1"
+else
+  # next() needs a default: a site with no .html yet (a genuinely fresh project)
+  # would otherwise raise StopIteration and abort the run.
+  KNOWN=$(python3 -c "import json,sys
+d=json.load(open(sys.argv[1]))
+print(next((i['name'] for i in d if i.get('ext')=='html'), ''))" "$dal")
+  if [ -z "$KNOWN" ]; then
+    echo "DA has no pages yet — nothing to compare against; treat the site as empty (§7)"
+  else
+    # 2. the candidate channel must serve that same page
+    code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$READ_CHANNEL/$KNOWN.plain.html")
+    [ "$code" = "200" ] \
+      || echo "channel does not serve $KNOWN — it is a DIFFERENT project; drop this rung"
+  fi
+fi
 ```
 
 If that 404s while pages 200, the server is serving a **different project**: drop
@@ -204,7 +219,7 @@ code=""
 for attempt in 1 2 3; do                       # the retry the prose below calls for
   code=$(curl -s -m 15 -o "$body" -w '%{http_code}' "$BASE/$P.plain.html")
   { [ "$code" = "200" ] && [ -s "$body" ]; } && break
-  sleep $((attempt * 2))
+  [ "$attempt" = "3" ] || sleep $((attempt * 2))   # no sleep after the last try
 done
 if [ "$code" != "200" ] || [ ! -s "$body" ]; then
   echo "❌ read failed after 3 attempts ($code, $(wc -c <"$body") bytes) — fall through the §1 ladder."

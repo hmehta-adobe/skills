@@ -85,7 +85,7 @@ icons). The sequence:
 ```bash
 git add blocks/<new-block> icons/<name>.svg   # never `git add .` / `git add -A`
 git status --short          # confirm NOTHING else is staged
-git commit -m "feat: <new-block> block"
+git commit -m "feat: <new-block> block" || { echo "❌ commit failed — nothing pushed"; exit 1; }
 git show --stat HEAD        # ← inspect the file list BEFORE it leaves the machine
 git push origin "$BRANCH"
 ```
@@ -122,8 +122,14 @@ for i in $(seq 1 24); do
   [ "$i" = "24" ] && { echo "❌ block JS not live after ~2min — check push/branch/Code Sync"; exit 1; }
   sleep 5
 done
-csscode=$(curl -s -o /dev/null -m 15 -w '%{http_code}' --compressed "$BH/blocks/<new-block>/<new-block>.css")
-[ "$csscode" = "200" ] || { echo "❌ block CSS not live ($csscode) — block renders unstyled; the Stage A gate box requires JS *and* CSS at 200, so failing here is the same verdict, reached sooner"; exit 1; }
+# CSS gets the SAME bounded poll as the JS above — it can lag behind JS, and a
+# single-shot check would abort a deploy that was seconds from being fine.
+for i in $(seq 1 24); do
+  csscode=$(curl -s -o /dev/null -m 15 -w '%{http_code}' --compressed "$BH/blocks/<new-block>/<new-block>.css")
+  [ "$csscode" = "200" ] && break
+  [ "$i" = "24" ] && { echo "❌ block CSS not live after ~2min ($csscode) — block renders unstyled; the Stage A gate box requires JS *and* CSS at 200, so failing here is the same verdict, reached sooner"; exit 1; }
+  sleep 5
+done
 ```
 
 ---
