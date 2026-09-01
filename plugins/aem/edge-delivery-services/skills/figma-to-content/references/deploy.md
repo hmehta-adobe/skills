@@ -63,7 +63,7 @@ req() {
     body="${out%$'\n'*}"
     case ",$expect," in *",$code,"*) printf '%s' "$body"; return 0;; esac
     case "$code" in
-      000|429|5??) sleep $((attempt * 2)); continue;;   # transient — bounded retry
+      000|429|5??) [ "$attempt" = "5" ] || sleep $((attempt * 2)); continue;;   # transient — bounded retry, no sleep after the last
       401)         echo "❌ 401 (empty body ⇒ token expired) — re-auth (da-auth) and retry" >&2; return 1;;
       *)           echo "❌ HTTP $code (expected $expect) — $*" >&2; return 1;;   # 4xx: do not retry
     esac

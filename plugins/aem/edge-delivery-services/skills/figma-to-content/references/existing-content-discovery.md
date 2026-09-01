@@ -81,7 +81,20 @@ Do **not** probe block names: they overlap between projects (`hero`, `cards`,
 unrelated project's dev server. Compare **identities** using the DA listing, which is
 scoped to this `daOrg`/`daRepo` by construction:
 
+**Only rung 1 needs this.** The preview host URL contains the repo and owner, and the
+DA Source API is scoped to `daOrg`/`daRepo`, so both are self-identifying — a local dev
+server is the only rung that can silently belong to another project. Guard accordingly,
+and skip the whole check when no channel was selected.
+
 ```bash
+# Only meaningful for the local dev server; rungs 2 and 3 identify themselves.
+case "$READ_CHANNEL" in
+  http://localhost*|http://127.0.0.1*) : ;;                 # rung 1 — verify below
+  "") echo "no channel selected — nothing to verify"; PROV=skip ;;
+  *)  echo "channel is self-identifying ($READ_CHANNEL) — provenance check not needed"; PROV=skip ;;
+esac
+
+if [ "$PROV" != "skip" ]; then
 # 1. ask DA which pages THIS project actually has. mktemp, not a fixed /tmp name
 #    (concurrent runs would clobber each other), and assert the status before
 #    parsing — a 401 or 5xx writes error HTML, not JSON.
@@ -94,7 +107,8 @@ else
   # next() needs a default: a site with no .html yet (a genuinely fresh project)
   # would otherwise raise StopIteration and abort the run.
   KNOWN=$(python3 -c "import json,sys
-d=json.load(open(sys.argv[1]))
+try: d=json.load(open(sys.argv[1]))
+except Exception: sys.exit(0)          # 200 with an HTML error page is not JSON
 print(next((i['name'] for i in d if i.get('ext')=='html'), ''))" "$dal")
   if [ -z "$KNOWN" ]; then
     echo "DA has no pages yet — nothing to compare against; treat the site as empty (§7)"
@@ -105,7 +119,12 @@ print(next((i['name'] for i in d if i.get('ext')=='html'), ''))" "$dal")
       || echo "channel does not serve $KNOWN — it is a DIFFERENT project; drop this rung"
   fi
 fi
+fi
 ```
+
+> **If you combine the snippets in this file into one script, merge their `trap`
+> lines.** Bash keeps only the **last** `EXIT` trap, so three snippets each setting
+> their own would leave the earlier temp files behind.
 
 If that 404s while pages 200, the server is serving a **different project**: drop
 the rung and move to the preview host. Skipping this is worse than finding no
@@ -133,7 +152,9 @@ qi=$(mktemp); trap 'rm -f "$qi"' EXIT
 qcode=$(curl -s -m 20 -o "$qi" -w '%{http_code}' "$BASE/query-index.json")
 if [ "$qcode" = "200" ] && [ -s "$qi" ]; then
   python3 -c "import json,sys
-d=json.load(open(sys.argv[1])); r=d.get('data',d)
+try: d=json.load(open(sys.argv[1]))
+except Exception: print('query-index is not JSON — treat as unavailable'); sys.exit(0)
+r=d.get('data',d)
 print(len(r),'pages')
 [print('  ',x.get('path'),'|',(x.get('title') or '')[:48]) for x in r[:25]]" "$qi"
 else
