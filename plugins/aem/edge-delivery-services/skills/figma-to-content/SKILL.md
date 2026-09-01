@@ -859,6 +859,14 @@ preview-only and never call it "done."**
       shared block; flagging it in the plan does **not** satisfy this box, and if
       you cannot verify legibility by either route the box is **FAILED** — block,
       never publish on an unchecked assumption.
+- [ ] **Every authored section `Style` class exists in this project's CSS** — grep
+      `styles/styles.css` (and any theme CSS it imports) for each class you put in a
+      `section-metadata` `Style` row. The pipeline applies **whatever you write**, so
+      an unknown class lands on the section and styles nothing: the band renders
+      plain and the "designed panel" look is silently absent, with no error anywhere.
+      A vocabulary borrowed from another project is the usual cause. This box
+      enforces the confirmation 2.1 rule 1 already asks for — a class that exists
+      only in your plan is a **FAILED** box.
 - [ ] **No placeholder survived into the deployed output** — grep the fragment
       for `lorem`, CTA labels like "Button"/"Lorem Ipsum", and repeated-identical
       items; every item that should be distinct has distinct copy **and** a
@@ -866,7 +874,9 @@ preview-only and never call it "done."**
 - [ ] **Every referenced icon resolves** — each `<span class="icon icon-x">`
       returns `200` at `/icons/x.svg` on the branch host (or is a full DA-`/media`
       URL on an `<img>`); **no emoji or Unicode glyph standing in for a designed
-      icon.**
+      icon.** A `404` here is a **FAILED** box, not an unverified one: "I cannot make
+      this pass without committing the SVG" is not the same as "I cannot check it."
+      The check is one `curl`, and its answer is already knowable.
 - [ ] **Every new block's code is live** — its JS **and** CSS return `200` on the
       branch host. (A `200` on the file proves it *exists*, not that the block
       *decorated* — that is the Stage B decoration box below.)
