@@ -159,14 +159,16 @@ guess or a partial capability.
    whichever started first — so a `200` there proves a server is running, never that
    it is *this* site. Reading another project's pages is worse than reading none:
    you resolve every section against a stranger's content and report high
-   confidence. **Prove provenance before trusting the channel** — fetch a code path
-   that exists only in this checkout and confirm `200`. **Pick a DISTINCTIVE block,
-   never a boilerplate one:** `hero`, `cards`, `columns`, `header`, `footer` and
-   `fragment` ship with the EDS boilerplate and exist in nearly every project, so
-   probing one of those returns `200` against *any* dev server and proves nothing.
-   Use a block whose name is specific to this project (`ls blocks/` and pick one
-   that is not in that boilerplate set), or a page path only this site should have.
-   On a mismatch, drop that rung and move to the preview host. **Fall through on a `401`/`403`** — see the
+   confidence. **Prove provenance before trusting the channel — do not probe block
+   names.** Block names overlap heavily between projects (`hero`, `cards`, `columns`,
+   `comparison-table`, `faq` and friends recur everywhere), so a `200` on
+   `blocks/<name>/…css` can be satisfied by an unrelated project's server and proves
+   nothing. Use the **DA source listing as the authority instead**: it is scoped to
+   *this* `daOrg`/`daRepo` by construction. `GET admin.da.live/list/{daOrg}/{daRepo}/`,
+   take a page path it reports, and require the candidate channel to serve that same
+   path. If the channel 404s a page this project definitely has, it belongs to a
+   different project — drop that rung and move on. **Compare identities, never mere
+   existence.** **Fall through on a `401`/`403`** — see the
    failure-signal guardrail. Only if *every* channel fails is existing content
    genuinely unreadable — say so explicitly in the plan rather than silently
    proceeding as if the site were empty. See
@@ -843,6 +845,13 @@ exists, never that the block decorated or matches the design. Fix-and-redeploy
 any box that fails. **Any box you cannot positively verify counts as failed, not
 passed** — an un-run check is a blocker, not a green light, and narrowing your
 attention to this list must not drop a check the phases above already require.
+**There are exactly two verdicts per box: PASS with the evidence quoted, or FAIL.**
+There is no "assumed", "likely", "standard practice", "probably fine" or
+**"ASSUMED PASS"** — inventing a third state is how an unverified box becomes a
+green one. If you know the command and did not run it, the box is **FAIL**, and
+reasoning about what the answer *would* be is not evidence. **The summary must carry
+the same verdict as the detail:** a box qualified anywhere with a caveat is FAIL in
+the roll-up, never PASS-with-a-note.
 **If no browser is available, the Stage B boxes are UNVERIFIED: report the page
 preview-only and never call it "done."**
 
@@ -861,12 +870,16 @@ preview-only and never call it "done."**
       never publish on an unchecked assumption.
 - [ ] **Every authored section `Style` class exists in this project's CSS** — grep
       `styles/styles.css` (and any theme CSS it imports) for each class you put in a
-      `section-metadata` `Style` row. The pipeline applies **whatever you write**, so
-      an unknown class lands on the section and styles nothing: the band renders
-      plain and the "designed panel" look is silently absent, with no error anywhere.
-      A vocabulary borrowed from another project is the usual cause. This box
-      enforces the confirmation 2.1 rule 1 already asks for — a class that exists
-      only in your plan is a **FAILED** box.
+      `section-metadata` `Style` row, and **quote the match count per class**. The
+      pipeline applies **whatever you write**, so an unknown class lands on the
+      section and styles nothing: the band renders plain and the "designed panel"
+      look is silently absent, with no error anywhere.
+      **Seeing the class in the rendered HTML is NOT evidence for this box** — the
+      pipeline puts it there regardless of whether any CSS defines it, so rendered
+      output confirms only that you authored it. Neither is "these are standard EDS
+      classes": section vocabularies are per-project, and a boilerplate site may
+      define none at all. Only a grep of this project's CSS clears this box; a class
+      that exists only in your plan is a **FAILED** box.
 - [ ] **No placeholder survived into the deployed output** — grep the fragment
       for `lorem`, CTA labels like "Button"/"Lorem Ipsum", and repeated-identical
       items; every item that should be distinct has distinct copy **and** a

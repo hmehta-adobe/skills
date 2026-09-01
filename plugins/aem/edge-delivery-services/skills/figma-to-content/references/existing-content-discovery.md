@@ -76,13 +76,20 @@ proxying dev server can `502` on `HEAD` while serving the same URL fine over `GE
 port belongs to whichever started first. Fetch a path that only this checkout
 serves and require `200`:
 
+Do **not** probe block names: they overlap between projects (`hero`, `cards`,
+`columns`, `comparison-table`, `faq` recur everywhere), so a `200` can come from an
+unrelated project's dev server. Compare **identities** using the DA listing, which is
+scoped to this `daOrg`/`daRepo` by construction:
+
 ```bash
-# Pick a DISTINCTIVE block — NOT hero/cards/columns/header/footer/fragment, which
-# ship with the boilerplate and exist in almost every EDS repo, so they return 200
-# against any dev server and prove nothing. `ls blocks/` and choose one specific
-# to this project.
-B=<distinctive-block-in-this-repo>
-curl -s -o /dev/null -m 10 -w '%{http_code}' "$READ_CHANNEL/blocks/$B/$B.css"
+# 1. ask DA which pages THIS project actually has
+curl -s -m 20 -H "Authorization: Bearer $DA_TOKEN" \
+  "https://admin.da.live/list/$DA_ORG/$DA_REPO/" > /tmp/da-list.json
+KNOWN=$(python3 -c "import json;d=json.load(open('/tmp/da-list.json'));
+print(next(i['name'] for i in d if i.get('ext')=='html'))")
+# 2. the candidate channel must serve that same page
+code=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$READ_CHANNEL/$KNOWN.plain.html")
+[ "$code" = "200" ] || echo "channel does not serve $KNOWN — it is a DIFFERENT project; drop this rung"
 ```
 
 If that 404s while pages 200, the server is serving a **different project**: drop
