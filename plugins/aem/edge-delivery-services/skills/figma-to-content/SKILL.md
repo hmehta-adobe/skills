@@ -160,9 +160,13 @@ guess or a partial capability.
    it is *this* site. Reading another project's pages is worse than reading none:
    you resolve every section against a stranger's content and report high
    confidence. **Prove provenance before trusting the channel** — fetch a code path
-   that exists only in this checkout (`<channel>/blocks/<a-block-in-this-repo>/…css`)
-   and confirm `200`, or check a page path this project should have and another
-   should not. On a mismatch, drop that rung and move to the preview host. **Fall through on a `401`/`403`** — see the
+   that exists only in this checkout and confirm `200`. **Pick a DISTINCTIVE block,
+   never a boilerplate one:** `hero`, `cards`, `columns`, `header`, `footer` and
+   `fragment` ship with the EDS boilerplate and exist in nearly every project, so
+   probing one of those returns `200` against *any* dev server and proves nothing.
+   Use a block whose name is specific to this project (`ls blocks/` and pick one
+   that is not in that boilerplate set), or a page path only this site should have.
+   On a mismatch, drop that rung and move to the preview host. **Fall through on a `401`/`403`** — see the
    failure-signal guardrail. Only if *every* channel fails is existing content
    genuinely unreadable — say so explicitly in the plan rather than silently
    proceeding as if the site were empty. See

@@ -77,8 +77,12 @@ port belongs to whichever started first. Fetch a path that only this checkout
 serves and require `200`:
 
 ```bash
-# a block that exists in THIS repo's blocks/ — the dev server serves repo code too
-curl -s -o /dev/null -m 10 -w '%{http_code}' "$READ_CHANNEL/blocks/<block-in-this-repo>/<block-in-this-repo>.css"
+# Pick a DISTINCTIVE block — NOT hero/cards/columns/header/footer/fragment, which
+# ship with the boilerplate and exist in almost every EDS repo, so they return 200
+# against any dev server and prove nothing. `ls blocks/` and choose one specific
+# to this project.
+B=<distinctive-block-in-this-repo>
+curl -s -o /dev/null -m 10 -w '%{http_code}' "$READ_CHANNEL/blocks/$B/$B.css"
 ```
 
 If that 404s while pages 200, the server is serving a **different project**: drop
